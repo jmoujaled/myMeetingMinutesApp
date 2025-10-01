@@ -1,0 +1,261 @@
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import {
+  BatchTranscription,
+  type BatchTranscriptionConfig,
+  type BatchTranscriptionConfigDiarizationEnum,
+  type SummarizationConfig,
+  type TopicDetectionConfig,
+  SpeechmaticsResponseError,
+} from 'speechmatics';
+
+process.env.UNDICI_HEADERS_TIMEOUT = '300000';
+process.env.UNDICI_BODY_TIMEOUT = '0';
+
+import { buildSpeakerSegments } from '@/lib/speechmatics';
+import { formatTimestamp } from '@/utils/time';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
+
+const speechmaticsKey = process.env.SPEECHMATICS_API_KEY;
+const openaiKey = process.env.OPENAI_API_KEY;
+
+if (!speechmaticsKey) {
+  console.warn('SPEECHMATICS_API_KEY is not set. The transcription endpoint will fail.');
+}
+
+if (!openaiKey) {
+  console.warn('OPENAI_API_KEY is not set. The transcription endpoint will fail.');
+}
+
+const openai = openaiKey
+  ? new OpenAI({ apiKey: openaiKey })
+  : undefined;
+
+export async function POST(request: NextRequest) {
+  if (!speechmaticsKey || !openai) {
+    return NextResponse.json(
+      { error: 'Server is missing Speechmatics or OpenAI credentials.' },
+      { status: 500 },
+    );
+  }
+
+  const speechmatics = new BatchTranscription(speechmaticsKey);
+
+  try {
+    const formData = await request.formData();
+    const file = formData.get('audio');
+    if (!file || !(file instanceof File)) {
+      return NextResponse.json(
+        { error: 'Upload an audio file under the "audio" field.' },
+        { status: 400 },
+      );
+    }
+
+    const language = formData.get('language')?.toString() ?? 'en';
+    const diarizationMode =
+      (formData.get('diarizationMode')?.toString() as
+        | BatchTranscriptionConfigDiarizationEnum
+        | undefined) ?? 'speaker';
+    const sensitivityInput = formData.get('speakerSensitivity');
+    const sensitivityValue =
+      sensitivityInput !== null && sensitivityInput !== undefined
+        ? Number.parseFloat(sensitivityInput.toString())
+        : undefined;
+    const speakerSensitivity = Number.isFinite(sensitivityValue)
+      ? Math.min(Math.max(sensitivityValue as number, 0), 1)
+      : undefined;
+
+    const enableSummarization =
+      formData.get('enableSummarization')?.toString() === 'true';
+    const summaryType = formData.get('summaryType')?.toString();
+    const summaryLength = formData.get('summaryLength')?.toString();
+    const summaryContentType =
+      formData.get('summaryContentType')?.toString();
+
+    const enableSentiment =
+      formData.get('enableSentiment')?.toString() === 'true';
+    const enableTopics = formData.get('enableTopics')?.toString() === 'true';
+
+    const topicsRaw = formData.get('topics')?.toString() ?? '';
+    const topics = topicsRaw
+      .split(',')
+      .map((topic) => topic.trim())
+      .filter(Boolean);
+
+    const translationLanguagesRaw =
+      formData.getAll('translationLanguages')?.join(',') ??
+      formData.get('translationLanguages')?.toString() ??
+      '';
+    const translationLanguages = translationLanguagesRaw
+      .split(',')
+      .map((lang) => lang.trim())
+      .filter(Boolean);
+
+    const transcriptionConfig: BatchTranscriptionConfig = {
+      language,
+    };
+
+    if (diarizationMode !== 'none') {
+      transcriptionConfig.diarization = diarizationMode;
+      if (diarizationMode === 'speaker' && speakerSensitivity !== undefined) {
+        transcriptionConfig.speaker_diarization_config = {
+          speaker_sensitivity: speakerSensitivity,
+        };
+      }
+    }
+
+    const summarizationConfig: SummarizationConfig | undefined =
+      enableSummarization
+        ? {
+            summary_type: summaryType || undefined,
+            summary_length: summaryLength || undefined,
+            content_type: summaryContentType || undefined,
+          }
+        : undefined;
+
+    const topicDetectionConfig: TopicDetectionConfig | undefined =
+      enableTopics
+        ? {
+            topics: topics.length > 0 ? topics : undefined,
+          }
+        : undefined;
+
+    const jobConfig: Parameters<BatchTranscription['transcribe']>[1] = {
+      transcription_config: transcriptionConfig,
+      summarization_config: summarizationConfig,
+      sentiment_analysis_config: enableSentiment ? {} : undefined,
+      topic_detection_config: topicDetectionConfig,
+      translation_config:
+        translationLanguages.length > 0
+          ? { target_languages: translationLanguages }
+          : undefined,
+    };
+
+    const warnings: string[] = [];
+
+    let transcript: Awaited<ReturnType<typeof speechmatics.transcribe>>;
+
+    try {
+      transcript = await speechmatics.transcribe(
+        file,
+        jobConfig,
+        'json-v2',
+      );
+    } catch (error) {
+      if (error instanceof SpeechmaticsResponseError) {
+        warnings.push(
+          `Speechmatics rejected the enriched request (${error.response.error}). Trying a simpler configuration.`,
+        );
+        try {
+          transcript = await speechmatics.transcribe(
+            file,
+            { transcription_config: transcriptionConfig },
+            'json-v2',
+          );
+        } catch (innerError) {
+          if (innerError instanceof SpeechmaticsResponseError) {
+            warnings.push(
+              `Speechmatics rejected basic diarization (${innerError.response.error}). Falling back to minimal transcription (no diarization or extras).`,
+            );
+            const minimalConfig: BatchTranscriptionConfig = { language };
+            transcript = await speechmatics.transcribe(
+              file,
+              { transcription_config: minimalConfig },
+              'json-v2',
+            );
+          } else {
+            throw innerError;
+          }
+        }
+      } else if (error instanceof Error) {
+        console.error('Speechmatics transcription failed', error);
+        throw error;
+      } else {
+        throw error;
+      }
+    }
+
+    if (typeof transcript === 'string') {
+      return NextResponse.json(
+        { error: 'Unexpected transcript format from Speechmatics.' },
+        { status: 502 },
+      );
+    }
+
+    const segments = buildSpeakerSegments(transcript);
+    const transcriptForPrompt = buildPromptTranscript(segments);
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4.1-nano',
+      temperature: 0.3,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are an executive assistant who writes concise, action-oriented meeting minutes. Include decisions, open questions, and next steps when present.',
+        },
+        {
+          role: 'user',
+          content: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${transcriptForPrompt}`,
+        },
+      ],
+      max_tokens: 600,
+    });
+
+    const minutes = completion.choices[0]?.message?.content ?? '';
+
+    const jobId = transcript.job?.id;
+    let transcriptText: string | undefined;
+    let transcriptSrt: string | undefined;
+
+    if (jobId) {
+      try {
+        const [textResult, srtResult] = await Promise.all([
+          speechmatics.getJobResult(jobId, 'text'),
+          speechmatics.getJobResult(jobId, 'srt'),
+        ]);
+        transcriptText = typeof textResult === 'string' ? textResult : undefined;
+        transcriptSrt = typeof srtResult === 'string' ? srtResult : undefined;
+      } catch (fetchError) {
+        console.warn('Unable to fetch transcript exports', fetchError);
+      }
+    }
+
+    return NextResponse.json({
+      segments,
+      minutes,
+      job: transcript.job,
+      summary: transcript.summary,
+      sentiment: transcript.sentiment_analysis,
+      topics: transcript.topics,
+      translations: transcript.translations,
+      transcriptText,
+      transcriptSrt,
+      transcriptJson: transcript,
+      warnings,
+    });
+  } catch (error) {
+    console.error('Transcription request failed', error);
+    return NextResponse.json(
+      { error: 'Failed to process the transcription request.' },
+      { status: 500 },
+    );
+  }
+}
+
+function buildPromptTranscript(
+  segments: ReturnType<typeof buildSpeakerSegments>,
+): string {
+  if (segments.length === 0) {
+    return 'No transcript content was returned.';
+  }
+  return segments
+    .map((segment) => {
+      const timestamp = formatTimestamp(segment.start);
+      return `[${timestamp}] ${segment.speakerLabel}: ${segment.text}`;
+    })
+    .join('\n');
+}

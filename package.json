@@ -1,0 +1,27 @@
+{
+  "name": "speechmatics-trial",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3030 --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start --hostname 0.0.0.0 --port 3030",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "15.5.4",
+    "openai": "^5.23.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "speechmatics": "^4.0.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.4",
+    "typescript": "^5"
+  }
+}
