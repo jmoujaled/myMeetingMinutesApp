@@ -249,6 +249,7 @@ export default function Home() {
   }, [topics]);
 
   const sentimentSummary = sentiment?.sentiment_analysis?.summary;
+  const sentimentOverall = sentimentSummary?.overall;
 
   const hasResults =
     displaySegments.length > 0 ||
@@ -773,21 +774,21 @@ export default function Home() {
             </article>
           )}
 
-          {enableSentiment && sentimentSummary && (
+          {enableSentiment && sentimentOverall && (
             <article className={styles.card}>
               <h2>Sentiment overview</h2>
               <ul className={styles.insightList}>
                 <li>
                   <span className={styles.sentimentDot} data-tone="positive" />
-                  Positive: {sentimentSummary.positive_count ?? 0}
+                  Positive: {sentimentOverall.positive_count ?? 0}
                 </li>
                 <li>
                   <span className={styles.sentimentDot} data-tone="neutral" />
-                  Neutral: {sentimentSummary.neutral_count ?? 0}
+                  Neutral: {sentimentOverall.neutral_count ?? 0}
                 </li>
                 <li>
                   <span className={styles.sentimentDot} data-tone="negative" />
-                  Negative: {sentimentSummary.negative_count ?? 0}
+                  Negative: {sentimentOverall.negative_count ?? 0}
                 </li>
               </ul>
             </article>
