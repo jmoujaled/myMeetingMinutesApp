@@ -70,9 +70,10 @@ const isSpeakerSegment = (segment: SpeakerSegment | null): segment is SpeakerSeg
     }
 
     if (result.type === 'word' || result.type === 'entity') {
-      const fallbackSpeaker = isSpeakerSegment(currentSegment)
-        ? currentSegment.speakerId
-        : 'unknown';
+      let fallbackSpeaker = 'unknown';
+      if (isSpeakerSegment(currentSegment)) {
+        fallbackSpeaker = currentSegment.speakerId;
+      }
       const speakerId = alternative.speaker ?? fallbackSpeaker;
       pushWord(result, alternative.content, speakerId);
     } else if (result.type === 'punctuation') {
