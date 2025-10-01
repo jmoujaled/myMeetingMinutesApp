@@ -67,7 +67,8 @@ export function buildSpeakerSegments(
     }
 
     if (result.type === 'word' || result.type === 'entity') {
-      const fallbackSpeaker = currentSegment ? currentSegment.speakerId : 'unknown';
+      const current = currentSegment;
+      const fallbackSpeaker = current ? current.speakerId : 'unknown';
       const speakerId = alternative.speaker ?? fallbackSpeaker;
       pushWord(result, alternative.content, speakerId);
     } else if (result.type === 'punctuation') {
