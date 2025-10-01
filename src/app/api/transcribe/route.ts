@@ -5,6 +5,9 @@ import {
   type BatchTranscriptionConfig,
   type BatchTranscriptionConfigDiarizationEnum,
   type SummarizationConfig,
+  SummarizationConfigContentTypeEnum,
+  SummarizationConfigSummaryLengthEnum,
+  SummarizationConfigSummaryTypeEnum,
   type TopicDetectionConfig,
   SpeechmaticsResponseError,
 } from 'speechmatics';
@@ -110,9 +113,9 @@ export async function POST(request: NextRequest) {
     const summarizationConfig: SummarizationConfig | undefined =
       enableSummarization
         ? {
-            summary_type: summaryType || undefined,
-            summary_length: summaryLength || undefined,
-            content_type: summaryContentType || undefined,
+            summary_type: mapSummaryType(summaryType),
+            summary_length: mapSummaryLength(summaryLength),
+            content_type: mapSummaryContentType(summaryContentType),
           }
         : undefined;
 
@@ -259,3 +262,39 @@ function buildPromptTranscript(
     })
     .join('\n');
 }
+    const mapSummaryType = (
+      value: string | undefined,
+    ): SummarizationConfigSummaryTypeEnum | undefined => {
+      switch (value) {
+        case SummarizationConfigSummaryTypeEnum.Paragraphs:
+        case SummarizationConfigSummaryTypeEnum.Bullets:
+          return value;
+        default:
+          return undefined;
+      }
+    };
+
+    const mapSummaryLength = (
+      value: string | undefined,
+    ): SummarizationConfigSummaryLengthEnum | undefined => {
+      switch (value) {
+        case SummarizationConfigSummaryLengthEnum.Brief:
+        case SummarizationConfigSummaryLengthEnum.Detailed:
+          return value;
+        default:
+          return undefined;
+      }
+    };
+
+    const mapSummaryContentType = (
+      value: string | undefined,
+    ): SummarizationConfigContentTypeEnum | undefined => {
+      switch (value) {
+        case SummarizationConfigContentTypeEnum.Auto:
+        case SummarizationConfigContentTypeEnum.Informative:
+        case SummarizationConfigContentTypeEnum.Conversational:
+          return value;
+        default:
+          return undefined;
+      }
+    };
