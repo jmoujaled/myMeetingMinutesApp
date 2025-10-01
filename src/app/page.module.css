@@ -315,6 +315,32 @@
   border-color: rgba(37, 99, 235, 0.35);
 }
 
+.advancedToggle {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.advancedToggle:hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.advancedPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.03);
+}
+
 @media (prefers-color-scheme: dark) {
   .downloads button {
     border-color: rgba(255, 255, 255, 0.18);

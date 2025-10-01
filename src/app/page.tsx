@@ -89,6 +89,7 @@ export default function Home() {
   const [enableTopics, setEnableTopics] = useState(false);
   const [topicsInput, setTopicsInput] = useState('');
   const [translationInput, setTranslationInput] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -452,163 +453,175 @@ export default function Home() {
             />
           </label>
 
-          <div className={styles.fieldRow}>
-            <label className={styles.label}>
-              <span>Language</span>
-              <input
-                type="text"
-                name="language"
-                value={language}
-                onChange={(event) => setLanguage(event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-            <label className={styles.label}>
-              <span>Diarization</span>
-              <select
-                name="diarizationMode"
-                value={diarizationMode}
-                onChange={(event) =>
-                  setDiarizationMode(event.target.value as DiarizationMode)
-                }
-                disabled={isSubmitting}
-              >
-                <option value="speaker">Speaker attribution</option>
-                <option value="speaker_change">Speaker change markers</option>
-                <option value="channel">Separate channels</option>
-                <option value="channel_and_speaker_change">
-                  Channel + speaker change
-                </option>
-                <option value="none">No diarization</option>
-              </select>
-            </label>
-          </div>
+          <button
+            type="button"
+            className={styles.advancedToggle}
+            onClick={() => setShowAdvanced((previous) => !previous)}
+          >
+            {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+          </button>
 
-          <label className={styles.label}>
-            <span>
-              Speaker sensitivity {diarizationMode !== 'speaker' && '(speaker mode)'}
-            </span>
-            <input
-              type="range"
-              name="speakerSensitivity"
-              min="0"
-              max="1"
-              step="0.1"
-              value={speakerSensitivity}
-              onChange={(event) =>
-                setSpeakerSensitivity(Number.parseFloat(event.target.value))
-              }
-              disabled={isSubmitting || diarizationMode !== 'speaker'}
-            />
-          </label>
-
-          <div className={styles.toggleGroup}>
-            <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={enableSummarization}
-                onChange={(event) => setEnableSummarization(event.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span>Speechmatics summarization</span>
-            </label>
-            {enableSummarization && (
-              <div className={styles.inlineFields}>
-                <label>
-                  Style
-                  <select
-                    value={summaryType}
-                    onChange={(event) =>
-                      setSummaryType(event.target.value as 'paragraphs' | 'bullets')
-                    }
+          {showAdvanced && (
+            <div className={styles.advancedPanel}>
+              <div className={styles.fieldRow}>
+                <label className={styles.label}>
+                  <span>Language</span>
+                  <input
+                    type="text"
+                    name="language"
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
                     disabled={isSubmitting}
-                  >
-                    <option value="paragraphs">Paragraphs</option>
-                    <option value="bullets">Bullets</option>
-                  </select>
+                  />
                 </label>
-                <label>
-                  Length
+                <label className={styles.label}>
+                  <span>Diarization</span>
                   <select
-                    value={summaryLength}
+                    name="diarizationMode"
+                    value={diarizationMode}
                     onChange={(event) =>
-                      setSummaryLength(
-                        event.target.value as 'brief' | 'detailed',
-                      )
+                      setDiarizationMode(event.target.value as DiarizationMode)
                     }
                     disabled={isSubmitting}
                   >
-                    <option value="brief">Brief</option>
-                    <option value="detailed">Detailed</option>
-                  </select>
-                </label>
-                <label>
-                  Tone
-                  <select
-                    value={summaryContentType}
-                    onChange={(event) =>
-                      setSummaryContentType(
-                        event.target.value as
-                          | 'auto'
-                          | 'informative'
-                          | 'conversational',
-                      )
-                    }
-                    disabled={isSubmitting}
-                  >
-                    <option value="auto">Auto</option>
-                    <option value="informative">Informative</option>
-                    <option value="conversational">Conversational</option>
+                    <option value="speaker">Speaker attribution</option>
+                    <option value="speaker_change">Speaker change markers</option>
+                    <option value="channel">Separate channels</option>
+                    <option value="channel_and_speaker_change">
+                      Channel + speaker change
+                    </option>
+                    <option value="none">No diarization</option>
                   </select>
                 </label>
               </div>
-            )}
-          </div>
 
-          <div className={styles.toggleRow}>
-            <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={enableSentiment}
-                onChange={(event) => setEnableSentiment(event.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span>Sentiment analysis</span>
-            </label>
-            <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={enableTopics}
-                onChange={(event) => setEnableTopics(event.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span>Topic detection</span>
-            </label>
-          </div>
+              <label className={styles.label}>
+                <span>
+                  Speaker sensitivity {diarizationMode !== 'speaker' && '(speaker mode)'}
+                </span>
+                <input
+                  type="range"
+                  name="speakerSensitivity"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={speakerSensitivity}
+                  onChange={(event) =>
+                    setSpeakerSensitivity(Number.parseFloat(event.target.value))
+                  }
+                  disabled={isSubmitting || diarizationMode !== 'speaker'}
+                />
+              </label>
 
-          {enableTopics && (
-            <label className={styles.label}>
-              <span>Focus on specific topics (comma separated)</span>
-              <input
-                type="text"
-                value={topicsInput}
-                onChange={(event) => setTopicsInput(event.target.value)}
-                placeholder="budgets, hiring, roadmap"
-                disabled={isSubmitting}
-              />
-            </label>
+              <div className={styles.toggleGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={enableSummarization}
+                    onChange={(event) => setEnableSummarization(event.target.checked)}
+                    disabled={isSubmitting}
+                  />
+                  <span>Speechmatics summarization</span>
+                </label>
+                {enableSummarization && (
+                  <div className={styles.inlineFields}>
+                    <label>
+                      Style
+                      <select
+                        value={summaryType}
+                        onChange={(event) =>
+                          setSummaryType(event.target.value as 'paragraphs' | 'bullets')
+                        }
+                        disabled={isSubmitting}
+                      >
+                        <option value="paragraphs">Paragraphs</option>
+                        <option value="bullets">Bullets</option>
+                      </select>
+                    </label>
+                    <label>
+                      Length
+                      <select
+                        value={summaryLength}
+                        onChange={(event) =>
+                          setSummaryLength(
+                            event.target.value as 'brief' | 'detailed',
+                          )
+                        }
+                        disabled={isSubmitting}
+                      >
+                        <option value="brief">Brief</option>
+                        <option value="detailed">Detailed</option>
+                      </select>
+                    </label>
+                    <label>
+                      Tone
+                      <select
+                        value={summaryContentType}
+                        onChange={(event) =>
+                          setSummaryContentType(
+                            event.target.value as
+                              | 'auto'
+                              | 'informative'
+                              | 'conversational',
+                          )
+                        }
+                        disabled={isSubmitting}
+                      >
+                        <option value="auto">Auto</option>
+                        <option value="informative">Informative</option>
+                        <option value="conversational">Conversational</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.toggleRow}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={enableSentiment}
+                    onChange={(event) => setEnableSentiment(event.target.checked)}
+                    disabled={isSubmitting}
+                  />
+                  <span>Sentiment analysis</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={enableTopics}
+                    onChange={(event) => setEnableTopics(event.target.checked)}
+                    disabled={isSubmitting}
+                  />
+                  <span>Topic detection</span>
+                </label>
+              </div>
+
+              {enableTopics && (
+                <label className={styles.label}>
+                  <span>Focus on specific topics (comma separated)</span>
+                  <input
+                    type="text"
+                    value={topicsInput}
+                    onChange={(event) => setTopicsInput(event.target.value)}
+                    placeholder="budgets, hiring, roadmap"
+                    disabled={isSubmitting}
+                  />
+                </label>
+              )}
+
+              <label className={styles.label}>
+                <span>Translation languages (comma separated ISO codes)</span>
+                <input
+                  type="text"
+                  value={translationInput}
+                  onChange={(event) => setTranslationInput(event.target.value)}
+                  placeholder="es, fr, de"
+                  disabled={isSubmitting}
+                />
+              </label>
+            </div>
           )}
-
-          <label className={styles.label}>
-            <span>Translation languages (comma separated ISO codes)</span>
-            <input
-              type="text"
-              value={translationInput}
-              onChange={(event) => setTranslationInput(event.target.value)}
-              placeholder="es, fr, de"
-              disabled={isSubmitting}
-            />
-          </label>
 
           <button
             type="submit"
