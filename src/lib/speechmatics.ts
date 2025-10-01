@@ -10,8 +10,11 @@ export function buildSpeakerSegments(
 ): SpeakerSegment[] {
   const segments: SpeakerSegment[] = [];
   const speakerLabels = new Map<string, string>();
-  let nextLabel = 1;
-  let currentSegment: SpeakerSegment | null = null;
+let nextLabel = 1;
+let currentSegment: SpeakerSegment | null = null;
+
+const isSpeakerSegment = (segment: SpeakerSegment | null): segment is SpeakerSegment =>
+  segment !== null;
 
   const assignLabel = (speakerId: string): string => {
     const existing = speakerLabels.get(speakerId);
@@ -67,8 +70,9 @@ export function buildSpeakerSegments(
     }
 
     if (result.type === 'word' || result.type === 'entity') {
-      const current = currentSegment;
-      const fallbackSpeaker = current ? current.speakerId : 'unknown';
+      const fallbackSpeaker = isSpeakerSegment(currentSegment)
+        ? currentSegment.speakerId
+        : 'unknown';
       const speakerId = alternative.speaker ?? fallbackSpeaker;
       pushWord(result, alternative.content, speakerId);
     } else if (result.type === 'punctuation') {
