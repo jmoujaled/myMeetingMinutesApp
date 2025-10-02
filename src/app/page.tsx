@@ -91,6 +91,12 @@ export default function Home() {
   const [translationInput, setTranslationInput] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const [meetingContext, setMeetingContext] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const contextChunksRef = useRef<Blob[]>([]);
+  const [isRecordingContext, setIsRecordingContext] = useState(false);
+  const [isTranscribingContext, setIsTranscribingContext] = useState(false);
+  const [contextError, setContextError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -282,6 +288,112 @@ export default function Home() {
     setActiveSegmentIndex(segment.index);
   }, []);
 
+  const transcribeContextRecording = useCallback(
+    async (blob: Blob) => {
+      setIsTranscribingContext(true);
+      setContextError(null);
+      try {
+        const formData = new FormData();
+        formData.append('audio', blob, 'context.webm');
+        const response = await fetch('/api/context-transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+        let payload: { text?: string; error?: string } = {};
+        try {
+          payload = (await response.json()) as { text?: string; error?: string };
+        } catch {
+          // ignore JSON parse errors
+        }
+        if (!response.ok || !payload.text) {
+          throw new Error(
+            payload.error ?? `Transcription failed (status ${response.status}).`,
+          );
+        }
+        setMeetingContext((previous) =>
+          previous ? `${previous}
+${payload.text}` : payload.text,
+        );
+      } catch (error) {
+        setContextError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to transcribe meeting context.',
+        );
+      } finally {
+        setIsTranscribingContext(false);
+      }
+    },
+    [],
+  );
+
+  const handleContextRecordToggle = useCallback(async () => {
+    if (isRecordingContext) {
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      setIsRecordingContext(false);
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setContextError('Voice input is only available in supported browsers.');
+      return;
+    }
+
+    try {
+      setContextError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      contextChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          contextChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        setContextError('Recording error. Please try again.');
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const chunks = contextChunksRef.current;
+        if (!chunks.length) {
+          setContextError('No audio captured. Try recording again.');
+          return;
+        }
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        if (blob.size === 0) {
+          setContextError('No audio captured. Try recording again.');
+          return;
+        }
+        void transcribeContextRecording(blob);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecordingContext(true);
+    } catch (error) {
+      setContextError(
+        error instanceof Error
+          ? error.message
+          : 'Microphone access was denied.',
+      );
+    }
+  }, [isRecordingContext, transcribeContextRecording]);
+
+  useEffect(() => {
+    return () => {
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+    };
+  }, []);
+
   const handleJump = useCallback(
     (direction: 'previous' | 'next') => {
       if (displaySegments.length === 0) return;
@@ -330,6 +442,20 @@ export default function Home() {
         continue;
       }
 
+      if (/^---+$/.test(line)) {
+        closeList();
+        html.push('<hr class="minutes-divider" />');
+        continue;
+      }
+
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        closeList();
+        const content = applyInlineFormatting(headingMatch[2]);
+        html.push(`<h3>${content}</h3>`);
+        continue;
+      }
+
       if (/^[-*]\s+/.test(line)) {
         if (!listOpen) {
           html.push('<ul>');
@@ -339,7 +465,7 @@ export default function Home() {
         html.push(`<li>${content}</li>`);
       } else {
         closeList();
-        const content = applyInlineFormatting(line);
+        const content = applyInlineFormatting(line.replace(/^\d+\.\s+/, ''));
         html.push(`<p>${content}</p>`);
       }
     }
@@ -378,6 +504,9 @@ export default function Home() {
     formData.append('language', language);
     formData.append('diarizationMode', diarizationMode);
     formData.append('speakerSensitivity', speakerSensitivity.toString());
+    if (meetingContext.trim()) {
+      formData.append('meetingContext', meetingContext.trim());
+    }
     formData.append('enableSummarization', String(enableSummarization));
     formData.append('summaryType', summaryType);
     formData.append('summaryLength', summaryLength);
@@ -423,6 +552,7 @@ export default function Home() {
       setTranscriptJson(payload.transcriptJson ?? null);
       setJobInfo(payload.job ?? null);
       setWarnings(payload.warnings ?? []);
+      setMeetingContext('');
       setStatusMessage('Completed successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error.');
@@ -453,6 +583,32 @@ export default function Home() {
               required
             />
           </label>
+
+          <label className={styles.label}>
+            <span>Meeting context (share agenda, goals, or attendees)</span>
+            <textarea
+              value={meetingContext}
+              onChange={(event) => setMeetingContext(event.target.value)}
+              placeholder="Planning discussion, budget review, participants: Alex, Jamie"
+              rows={3}
+              disabled={isSubmitting}
+            />
+          </label>
+
+          <div className={styles.contextActions}>
+            <button
+              type="button"
+              onClick={handleContextRecordToggle}
+              className={styles.contextButton}
+              disabled={isSubmitting || isTranscribingContext}
+            >
+              {isRecordingContext ? 'Stop recording context' : 'Record meeting context'}
+            </button>
+            {isTranscribingContext && (
+              <span className={styles.contextStatus}>Transcribing…</span>
+            )}
+          </div>
+          {contextError && <p className={styles.contextError}>{contextError}</p>}
 
           <button
             type="button"
@@ -652,9 +808,6 @@ export default function Home() {
             <article className={styles.card}>
               <header className={styles.cardHeader}>
                 <h2>Review the audio</h2>
-                {jobInfo && (
-                  <span className={styles.badge}>Job #{jobInfo.id}</span>
-                )}
               </header>
               <audio
                 ref={audioRef}
@@ -759,7 +912,7 @@ export default function Home() {
 
           {minutes && (
             <article className={`${styles.card} ${styles.minutesCard}`}>
-              <h2>OpenAI meeting minutes</h2>
+              <h2>Meeting minutes</h2>
               <div
                 className={styles.minutesContent}
                 dangerouslySetInnerHTML={{ __html: minutesHtml }}

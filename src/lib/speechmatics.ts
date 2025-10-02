@@ -14,7 +14,7 @@ let nextLabel = 1;
 let currentSegment: SpeakerSegment | null = null;
 
 const isSpeakerSegment = (segment: SpeakerSegment | null): segment is SpeakerSegment =>
-  segment !== null;
+  segment !== null && typeof segment === 'object' && 'speakerId' in segment;
 
   const assignLabel = (speakerId: string): string => {
     const existing = speakerLabels.get(speakerId);
@@ -72,7 +72,7 @@ const isSpeakerSegment = (segment: SpeakerSegment | null): segment is SpeakerSeg
     if (result.type === 'word' || result.type === 'entity') {
       let fallbackSpeaker = 'unknown';
       if (isSpeakerSegment(currentSegment)) {
-        fallbackSpeaker = currentSegment.speakerId;
+        fallbackSpeaker = (currentSegment as SpeakerSegment).speakerId;
       }
       const speakerId = alternative.speaker ?? fallbackSpeaker;
       pushWord(result, alternative.content, speakerId);

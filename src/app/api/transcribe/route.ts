@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
       ? Math.min(Math.max(sensitivityValue as number, 0), 1)
       : undefined;
 
+    const meetingContext = formData.get('meetingContext')?.toString().trim() ?? '';
+
     const enableSummarization =
       formData.get('enableSummarization')?.toString() === 'true';
     const summaryType = formData.get('summaryType')?.toString();
@@ -190,6 +192,12 @@ export async function POST(request: NextRequest) {
 
     const segments = buildSpeakerSegments(transcript);
     const transcriptForPrompt = buildPromptTranscript(segments);
+    const contextForPrompt = meetingContext
+      ? `Meeting context provided by the organizer:
+${meetingContext}
+
+`
+      : '';
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4.1-nano',
@@ -202,7 +210,7 @@ export async function POST(request: NextRequest) {
         },
         {
           role: 'user',
-          content: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${transcriptForPrompt}`,
+          content: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${contextForPrompt}${transcriptForPrompt}`,
         },
       ],
       max_tokens: 600,

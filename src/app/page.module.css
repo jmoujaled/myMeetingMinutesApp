@@ -331,6 +331,44 @@
   border-color: rgba(37, 99, 235, 0.35);
 }
 
+.contextActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.contextButton {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.contextButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.contextButton:not(:disabled):hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.contextStatus {
+  font-size: 13px;
+  color: rgba(37, 99, 235, 0.9);
+}
+
+.contextError {
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+}
+
 .advancedPanel {
   display: flex;
   flex-direction: column;
@@ -349,6 +387,23 @@
   .downloads button:hover {
     background: rgba(59, 130, 246, 0.18);
     border-color: rgba(59, 130, 246, 0.45);
+  }
+
+  .contextButton:not(:disabled):hover {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(59, 130, 246, 0.45);
+  }
+
+  .contextStatus {
+    color: rgba(147, 197, 253, 0.85);
+  }
+
+  .contextError {
+    color: #ff7b7b;
+  }
+
+  .minutesContent .minutes-divider {
+    border-color: rgba(148, 163, 184, 0.35);
   }
 }
 
@@ -581,7 +636,16 @@
 .minutesContent strong {
   font-weight: 700;
   color: var(--foreground);
-  background: rgba(37, 99, 235, 0.12);
-  padding: 0 2px;
-  border-radius: 4px;
+}
+
+.minutesContent h3 {
+  margin: 12px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.minutesContent .minutes-divider {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 12px 0;
 }
