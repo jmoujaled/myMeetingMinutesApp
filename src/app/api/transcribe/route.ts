@@ -26,11 +26,11 @@ const speechmaticsKey = process.env.SPEECHMATICS_API_KEY;
 const openaiKey = process.env.OPENAI_API_KEY;
 
 if (!speechmaticsKey) {
-  console.warn('SPEECHMATICS_API_KEY is not set. The transcription endpoint will fail.');
+  console.warn('Transcription API key is not set. The endpoint will fail.');
 }
 
 if (!openaiKey) {
-  console.warn('OPENAI_API_KEY is not set. The transcription endpoint will fail.');
+  console.warn('Generation API key is not set. The endpoint will fail.');
 }
 
 const openai = openaiKey
@@ -40,7 +40,7 @@ const openai = openaiKey
 export async function POST(request: NextRequest) {
   if (!speechmaticsKey || !openai) {
     return NextResponse.json(
-      { error: 'Server is missing Speechmatics or OpenAI credentials.' },
+      { error: 'Server is missing required credentials.' },
       { status: 500 },
     );
   }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       if (error instanceof SpeechmaticsResponseError) {
         warnings.push(
-          `Speechmatics rejected the enriched request (${error.response.error}). Trying a simpler configuration.`,
+          'Transcription request was rejected. Trying a simpler configuration.',
         );
         try {
           transcript = await speechmatics.transcribe(
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         } catch (innerError) {
           if (innerError instanceof SpeechmaticsResponseError) {
             warnings.push(
-              `Speechmatics rejected basic diarization (${innerError.response.error}). Falling back to minimal transcription (no diarization or extras).`,
+              'Transcription with diarization was rejected. Falling back to minimal transcription (no diarization or extras).',
             );
             const minimalConfig: BatchTranscriptionConfig = { language };
             transcript = await speechmatics.transcribe(
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } else if (error instanceof Error) {
-        console.error('Speechmatics transcription failed', error);
+        console.error('Transcription service failed', error);
         throw error;
       } else {
         throw error;
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 
     if (typeof transcript === 'string') {
       return NextResponse.json(
-        { error: 'Unexpected transcript format from Speechmatics.' },
+        { error: 'Unexpected transcript format from provider.' },
         { status: 502 },
       );
     }
@@ -199,24 +199,37 @@ ${meetingContext}
 `
       : '';
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1-mini',
-      temperature: 0.3,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an executive assistant who writes concise, action-oriented meeting minutes. Include decisions, open questions, and next steps when present.',
-        },
-        {
-          role: 'user',
-          content: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${contextForPrompt}${transcriptForPrompt}`,
-        },
-      ],
-      max_tokens: 600,
-    });
-
-    const minutes = completion.choices[0]?.message?.content ?? '';
+    let minutes = '';
+    try {
+      const completion = await openai.responses.create({
+        model: 'gpt-5-mini-2025-08-07',
+        max_output_tokens: 900,
+        input: [
+          {
+            role: 'system',
+            content: [
+              {
+                type: 'input_text',
+                text: 'You are an executive assistant who writes concise, action-oriented meeting minutes. Include decisions, open questions, and next steps when present.',
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${contextForPrompt}${transcriptForPrompt}`,
+              },
+            ],
+          },
+        ],
+      });
+      minutes = completion.output_text ?? '';
+    } catch (openAiError) {
+      console.error('Minutes generation failed', openAiError);
+      warnings.push('Minutes generation failed; minutes are unavailable.');
+    }
 
     const jobId = transcript.job?.id;
     let transcriptText: string | undefined;
