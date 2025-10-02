@@ -305,14 +305,15 @@ export default function Home() {
         } catch {
           // ignore JSON parse errors
         }
-        if (!response.ok || !payload.text) {
+        const newText = payload.text ?? '';
+        if (!response.ok || newText.trim().length === 0) {
           throw new Error(
             payload.error ?? `Transcription failed (status ${response.status}).`,
           );
         }
         setMeetingContext((previous) =>
           previous ? `${previous}
-${payload.text}` : payload.text,
+${newText}` : newText,
         );
       } catch (error) {
         setContextError(
