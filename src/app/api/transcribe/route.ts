@@ -200,7 +200,7 @@ ${meetingContext}
       : '';
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-nano',
+      model: 'gpt-5.1-mini',
       temperature: 0.3,
       messages: [
         {

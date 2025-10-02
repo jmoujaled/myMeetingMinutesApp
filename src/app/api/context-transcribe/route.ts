@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const transcription = await openai.audio.transcriptions.create({
-      model: 'gpt-4o-mini-transcribe',
+      model: 'gpt-5.0-mini-transcribe',
       file: audio,
       temperature: 0.2,
     });
