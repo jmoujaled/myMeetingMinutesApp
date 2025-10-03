@@ -97,6 +97,19 @@ export default function Studio() {
   const [isRecordingContext, setIsRecordingContext] = useState(false);
   const [isTranscribingContext, setIsTranscribingContext] = useState(false);
   const [contextError, setContextError] = useState<string | null>(null);
+
+  const meetingRecorderRef = useRef<MediaRecorder | null>(null);
+  const meetingChunksRef = useRef<Blob[]>([]);
+  const meetingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isRecordingMeeting, setIsRecordingMeeting] = useState(false);
+  const [isProcessingRecording, setIsProcessingRecording] = useState(false);
+  const [meetingRecordingError, setMeetingRecordingError] =
+    useState<string | null>(null);
+  const [meetingRecordingDuration, setMeetingRecordingDuration] =
+    useState(0);
+  const [hasRecordedMeeting, setHasRecordedMeeting] = useState(false);
+  const [meetingRecordingFilename, setMeetingRecordingFilename] =
+    useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -328,6 +341,132 @@ ${newText}` : newText,
     [],
   );
 
+  const clearMeetingTimer = useCallback(() => {
+    if (meetingTimerRef.current) {
+      clearInterval(meetingTimerRef.current);
+      meetingTimerRef.current = null;
+    }
+  }, []);
+
+  const formattedMeetingDuration = useMemo(
+    () => formatTimestamp(meetingRecordingDuration),
+    [meetingRecordingDuration],
+  );
+
+  const handleMeetingRecordToggle = useCallback(async () => {
+    if (isRecordingMeeting) {
+      setIsProcessingRecording(true);
+      const recorder = meetingRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setMeetingRecordingError('Recording is not supported in this browser.');
+      return;
+    }
+
+    try {
+      setMeetingRecordingError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      meetingChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          meetingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        setMeetingRecordingError('Recording error. Please try again.');
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        clearMeetingTimer();
+        meetingRecorderRef.current = null;
+        setIsRecordingMeeting(false);
+        const chunks = meetingChunksRef.current;
+        if (!chunks.length) {
+          setMeetingRecordingError('No audio captured. Try recording again.');
+          setIsProcessingRecording(false);
+          return;
+        }
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size === 0) {
+          setMeetingRecordingError('No audio captured. Try recording again.');
+          setIsProcessingRecording(false);
+          return;
+        }
+        const filename = `meeting-${new Date()
+          .toISOString()
+          .replace(/[:.]/g, '-')}.webm`;
+        const recordedFile = new File([blob], filename, { type: blob.type });
+        setMeetingRecordingFilename(filename);
+        setHasRecordedMeeting(true);
+        setMeetingRecordingError(null);
+        setFile(recordedFile);
+        setIsProcessingRecording(false);
+      };
+
+      meetingRecorderRef.current = recorder;
+      recorder.start();
+      setIsProcessingRecording(false);
+      setHasRecordedMeeting(false);
+      setMeetingRecordingFilename(null);
+      setMeetingRecordingDuration(0);
+      meetingChunksRef.current = [];
+      setFile(null);
+      clearMeetingTimer();
+      meetingTimerRef.current = setInterval(() => {
+        setMeetingRecordingDuration((previous) => previous + 1);
+      }, 1000);
+      setIsRecordingMeeting(true);
+    } catch (error) {
+      setMeetingRecordingError(
+        error instanceof Error
+          ? error.message
+          : 'Microphone access was denied.',
+      );
+      clearMeetingTimer();
+      setIsProcessingRecording(false);
+    }
+  }, [clearMeetingTimer, isRecordingMeeting]);
+
+  const handleDiscardRecording = useCallback(() => {
+    if (isRecordingMeeting) return;
+    clearMeetingTimer();
+    meetingChunksRef.current = [];
+    meetingRecorderRef.current = null;
+    setMeetingRecordingFilename(null);
+    setMeetingRecordingDuration(0);
+    if (hasRecordedMeeting) {
+      setFile(null);
+      setHasRecordedMeeting(false);
+    }
+    setMeetingRecordingError(null);
+  }, [clearMeetingTimer, hasRecordedMeeting, isRecordingMeeting]);
+
+  const meetingStatusLabel = useMemo(() => {
+    if (isRecordingMeeting) return 'Recording…';
+    if (isProcessingRecording) return 'Processing recording…';
+    if (hasRecordedMeeting && meetingRecordingFilename) return 'Recording ready';
+    if (file) return 'File selected';
+    return 'Idle';
+  }, [
+    file,
+    hasRecordedMeeting,
+    isProcessingRecording,
+    isRecordingMeeting,
+    meetingRecordingFilename,
+  ]);
+
   const handleContextRecordToggle = useCallback(async () => {
     if (isRecordingContext) {
       const recorder = mediaRecorderRef.current;
@@ -391,6 +530,13 @@ ${newText}` : newText,
       const recorder = mediaRecorderRef.current;
       if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
+      }
+      const meetingRecorder = meetingRecorderRef.current;
+      if (meetingRecorder && meetingRecorder.state !== 'inactive') {
+        meetingRecorder.stop();
+      }
+      if (meetingTimerRef.current) {
+        clearInterval(meetingTimerRef.current);
       }
     };
   }, []);
@@ -573,13 +719,76 @@ ${newText}` : newText,
         </p>
 
         <form className={styles.form} onSubmit={handleSubmit}>
+          <section className={styles.recordPanel}>
+            <div className={styles.recordHeader}>
+              <h2>Capture a meeting</h2>
+              <span
+                className={`${styles.recordStatus} ${
+                  isRecordingMeeting ? styles.recordStatusActive : ''
+                }`}
+              >
+                {meetingStatusLabel}
+              </span>
+            </div>
+            <p className={styles.recordNote}>
+              Record audio directly from your microphone or upload an existing file below.
+              When you stop recording, the captured audio is attached automatically.
+            </p>
+            <div className={styles.recordActions}>
+              <button
+                type="button"
+                onClick={handleMeetingRecordToggle}
+                className={styles.recordButton}
+                disabled={isSubmitting || isProcessingRecording}
+              >
+                {isRecordingMeeting ? 'Stop recording' : 'Start recording'}
+              </button>
+              {hasRecordedMeeting && audioUrl && meetingRecordingFilename && (
+                <a
+                  href={audioUrl}
+                  download={meetingRecordingFilename}
+                  className={styles.recordDownload}
+                >
+                  Download recording
+                </a>
+              )}
+              {hasRecordedMeeting && (
+                <button
+                  type="button"
+                  onClick={handleDiscardRecording}
+                  className={styles.recordSecondary}
+                >
+                  Discard
+                </button>
+              )}
+            </div>
+            <div className={styles.recordFooter}>
+              <span className={styles.recordTimer}>
+                Duration: {formattedMeetingDuration}
+              </span>
+              {isProcessingRecording && (
+                <span className={styles.recordProcessing}>Processing…</span>
+              )}
+            </div>
+            {meetingRecordingError && (
+              <p className={styles.recordError}>{meetingRecordingError}</p>
+            )}
+          </section>
+
           <label className={styles.label}>
             <span>Audio file (MP3, WAV, M4A...)</span>
             <input
               type="file"
               name="audio"
               accept="audio/*"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const selected = event.target.files?.[0] ?? null;
+                setFile(selected);
+                setHasRecordedMeeting(false);
+                setMeetingRecordingFilename(selected ? selected.name : null);
+                setMeetingRecordingDuration(0);
+                setMeetingRecordingError(null);
+              }}
               disabled={isSubmitting}
               required
             />

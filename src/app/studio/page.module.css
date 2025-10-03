@@ -58,7 +58,8 @@
 }
 
 .label input,
-.label select {
+.label select,
+.label textarea {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.18);
@@ -70,9 +71,16 @@
   padding: 0;
 }
 
+.label textarea {
+  resize: vertical;
+  min-height: 96px;
+  font-family: inherit;
+}
+
 @media (prefers-color-scheme: dark) {
   .label input,
-  .label select {
+  .label select,
+  .label textarea {
     border-color: rgba(255, 255, 255, 0.2);
     background: rgba(255, 255, 255, 0.08);
   }
@@ -331,6 +339,94 @@
   border-color: rgba(37, 99, 235, 0.35);
 }
 
+.recordPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.recordHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.recordStatus {
+  font-size: 13px;
+  color: rgba(55, 65, 81, 0.85);
+}
+
+.recordStatusActive {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.recordNote {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(55, 65, 81, 0.75);
+}
+
+.recordActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.recordButton,
+.recordSecondary,
+.recordDownload {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.recordButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.recordButton:not(:disabled):hover,
+.recordSecondary:hover,
+.recordDownload:hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.recordSecondary {
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+.recordFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: rgba(55, 65, 81, 0.75);
+}
+
+.recordProcessing {
+  color: rgba(37, 99, 235, 0.9);
+}
+
+.recordError {
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+}
+
 .contextActions {
   display: flex;
   align-items: center;
@@ -387,6 +483,40 @@
   .downloads button:hover {
     background: rgba(59, 130, 246, 0.18);
     border-color: rgba(59, 130, 246, 0.45);
+  }
+
+  .recordPanel {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .recordStatus {
+    color: rgba(209, 213, 219, 0.8);
+  }
+
+  .recordNote,
+  .recordFooter {
+    color: rgba(209, 213, 219, 0.7);
+  }
+
+  .recordButton:not(:disabled):hover,
+  .recordSecondary:hover,
+  .recordDownload:hover {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(59, 130, 246, 0.45);
+  }
+
+  .recordSecondary,
+  .recordDownload {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .recordProcessing {
+    color: rgba(147, 197, 253, 0.85);
+  }
+
+  .recordError {
+    color: #ff7b7b;
   }
 
   .contextButton:not(:disabled):hover {
