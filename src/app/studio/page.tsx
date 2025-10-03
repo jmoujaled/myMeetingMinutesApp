@@ -92,6 +92,7 @@ export default function Studio() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [meetingContext, setMeetingContext] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const contextChunksRef = useRef<Blob[]>([]);
   const [isRecordingContext, setIsRecordingContext] = useState(false);
@@ -412,6 +413,11 @@ ${newText}` : newText,
         setHasRecordedMeeting(true);
         setMeetingRecordingError(null);
         setFile(recordedFile);
+        if (fileInputRef.current) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(recordedFile);
+          fileInputRef.current.files = dataTransfer.files;
+        }
         setIsProcessingRecording(false);
       };
 
@@ -423,6 +429,9 @@ ${newText}` : newText,
       setMeetingRecordingDuration(0);
       meetingChunksRef.current = [];
       setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       clearMeetingTimer();
       meetingTimerRef.current = setInterval(() => {
         setMeetingRecordingDuration((previous) => previous + 1);
@@ -448,6 +457,9 @@ ${newText}` : newText,
     setMeetingRecordingDuration(0);
     if (hasRecordedMeeting) {
       setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setHasRecordedMeeting(false);
     }
     setMeetingRecordingError(null);
@@ -778,6 +790,7 @@ ${newText}` : newText,
           <label className={styles.label}>
             <span>Audio file (MP3, WAV, M4A...)</span>
             <input
+              ref={fileInputRef}
               type="file"
               name="audio"
               accept="audio/*"
@@ -788,6 +801,9 @@ ${newText}` : newText,
                 setMeetingRecordingFilename(selected ? selected.name : null);
                 setMeetingRecordingDuration(0);
                 setMeetingRecordingError(null);
+                if (!selected && fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
               }}
               disabled={isSubmitting}
               required
