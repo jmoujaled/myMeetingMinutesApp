@@ -98,6 +98,9 @@ export default function Studio() {
   const [isRecordingContext, setIsRecordingContext] = useState(false);
   const [isTranscribingContext, setIsTranscribingContext] = useState(false);
   const [contextError, setContextError] = useState<string | null>(null);
+  const [supportsContextRecording, setSupportsContextRecording] =
+    useState(true);
+  const contextMimeSupportRef = useRef<{ mimeType: string; extension: string } | null>(null);
 
   const meetingRecorderRef = useRef<MediaRecorder | null>(null);
   const meetingChunksRef = useRef<Blob[]>([]);
@@ -111,6 +114,9 @@ export default function Studio() {
   const [hasRecordedMeeting, setHasRecordedMeeting] = useState(false);
   const [meetingRecordingFilename, setMeetingRecordingFilename] =
     useState<string | null>(null);
+  const [supportsMeetingRecording, setSupportsMeetingRecording] =
+    useState(true);
+  const meetingMimeSupportRef = useRef<{ mimeType: string; extension: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -371,11 +377,13 @@ ${newText}` : newText,
 
     try {
       setMeetingRecordingError(null);
+      const support = meetingMimeSupportRef.current;
+      if (!support) {
+        setMeetingRecordingError('Recording is not supported in this browser.');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, { mimeType: support.mimeType });
       meetingChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
@@ -399,7 +407,7 @@ ${newText}` : newText,
           setIsProcessingRecording(false);
           return;
         }
-        const blob = new Blob(chunks, { type: mimeType });
+        const blob = new Blob(chunks, { type: support.mimeType });
         if (blob.size === 0) {
           setMeetingRecordingError('No audio captured. Try recording again.');
           setIsProcessingRecording(false);
@@ -407,7 +415,7 @@ ${newText}` : newText,
         }
         const filename = `meeting-${new Date()
           .toISOString()
-          .replace(/[:.]/g, '-')}.webm`;
+          .replace(/[:.]/g, '-')}.${support.extension}`;
         const recordedFile = new File([blob], filename, { type: blob.type });
         setMeetingRecordingFilename(filename);
         setHasRecordedMeeting(true);
@@ -469,6 +477,7 @@ ${newText}` : newText,
     if (isRecordingMeeting) return 'Recording…';
     if (isProcessingRecording) return 'Processing recording…';
     if (hasRecordedMeeting && meetingRecordingFilename) return 'Recording ready';
+    if (!supportsMeetingRecording) return 'Recording unavailable';
     if (file) return 'File selected';
     return 'Idle';
   }, [
@@ -477,6 +486,7 @@ ${newText}` : newText,
     isProcessingRecording,
     isRecordingMeeting,
     meetingRecordingFilename,
+    supportsMeetingRecording,
   ]);
 
   const handleContextRecordToggle = useCallback(async () => {
@@ -551,6 +561,40 @@ ${newText}` : newText,
         clearInterval(meetingTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') {
+      meetingMimeSupportRef.current = null;
+      contextMimeSupportRef.current = null;
+      setSupportsMeetingRecording(false);
+      setSupportsContextRecording(false);
+      return;
+    }
+
+    const candidates: Array<{ mimeType: string; extension: string }> = [
+      { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
+      { mimeType: 'audio/webm', extension: 'webm' },
+      { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'm4a' },
+      { mimeType: 'audio/mp4', extension: 'm4a' },
+    ];
+
+    const pickSupport = () => {
+      for (const option of candidates) {
+        if (MediaRecorder.isTypeSupported(option.mimeType)) {
+          return option;
+        }
+      }
+      return null;
+    };
+
+    const meetingSupport = pickSupport();
+    meetingMimeSupportRef.current = meetingSupport;
+    setSupportsMeetingRecording(Boolean(meetingSupport));
+
+    const contextSupport = pickSupport();
+    contextMimeSupportRef.current = contextSupport;
+    setSupportsContextRecording(Boolean(contextSupport));
   }, []);
 
   const handleJump = useCallback(
@@ -791,6 +835,12 @@ ${newText}` : newText,
                 {meetingRecordingError && (
                   <p className={styles.recordError}>{meetingRecordingError}</p>
                 )}
+                {!supportsMeetingRecording && !meetingRecordingError && (
+                  <p className={styles.recordError}>
+                    This browser does not support in-browser meeting recording. Please upload an
+                    audio file instead.
+                  </p>
+                )}
               </div>
 
               <div className={styles.captureColumn}>
@@ -846,6 +896,12 @@ ${newText}` : newText,
                   )}
                 </div>
                 {contextError && <p className={styles.contextError}>{contextError}</p>}
+                {!supportsContextRecording && !contextError && (
+                  <p className={styles.contextError}>
+                    Voice notes are not available in this browser. You can type meeting context above
+                    instead.
+                  </p>
+                )}
               </div>
             </div>
           </section>
