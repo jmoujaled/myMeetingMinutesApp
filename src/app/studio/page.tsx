@@ -731,9 +731,14 @@ ${newText}` : newText,
         </p>
 
         <form className={styles.form} onSubmit={handleSubmit}>
-          <section className={styles.recordPanel}>
-            <div className={styles.recordHeader}>
-              <h2>Capture a meeting</h2>
+          <section className={styles.captureCard}>
+            <header className={styles.captureHeader}>
+              <div>
+                <h2>Capture & prepare your meeting</h2>
+                <p>
+                  Record directly in the browser or upload an existing file, then share context to guide the minutes.
+                </p>
+              </div>
               <span
                 className={`${styles.recordStatus} ${
                   isRecordingMeeting ? styles.recordStatusActive : ''
@@ -741,108 +746,125 @@ ${newText}` : newText,
               >
                 {meetingStatusLabel}
               </span>
+            </header>
+
+            <div className={styles.captureGrid}>
+              <div className={styles.captureColumn}>
+                <div className={styles.recordActions}>
+                  <button
+                    type="button"
+                    onClick={handleMeetingRecordToggle}
+                    className={`${styles.recordButton} ${
+                      isRecordingMeeting ? styles.recordButtonActive : ''
+                    }`}
+                    disabled={isSubmitting || isProcessingRecording}
+                  >
+                    {isRecordingMeeting ? 'Stop recording' : 'Start recording'}
+                  </button>
+                  {hasRecordedMeeting && audioUrl && meetingRecordingFilename && (
+                    <a
+                      href={audioUrl}
+                      download={meetingRecordingFilename}
+                      className={styles.recordDownload}
+                    >
+                      Download recording
+                    </a>
+                  )}
+                  {hasRecordedMeeting && (
+                    <button
+                      type="button"
+                      onClick={handleDiscardRecording}
+                      className={styles.recordSecondary}
+                    >
+                      Discard
+                    </button>
+                  )}
+                </div>
+                <div className={styles.recordFooter}>
+                  <span className={styles.recordTimer}>
+                    Duration: {formattedMeetingDuration}
+                  </span>
+                  {isProcessingRecording && (
+                    <span className={styles.recordProcessing}>Processing…</span>
+                  )}
+                </div>
+                {meetingRecordingError && (
+                  <p className={styles.recordError}>{meetingRecordingError}</p>
+                )}
+              </div>
+
+              <div className={styles.captureColumn}>
+                <label className={styles.label}>
+                  <span>Upload audio (MP3, WAV, M4A...)</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    name="audio"
+                    accept="audio/*"
+                    onChange={(event) => {
+                      const selected = event.target.files?.[0] ?? null;
+                      setFile(selected);
+                      setHasRecordedMeeting(false);
+                      setMeetingRecordingFilename(selected ? selected.name : null);
+                      setMeetingRecordingDuration(0);
+                      setMeetingRecordingError(null);
+                      if (!selected && fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                    disabled={isSubmitting}
+                    required
+                  />
+                </label>
+
+                <label className={styles.label}>
+                  <span>Meeting context (agenda, goals, attendees…)</span>
+                  <textarea
+                    value={meetingContext}
+                    onChange={(event) => setMeetingContext(event.target.value)}
+                    placeholder="Planning discussion, budget review, participants: Alex, Jamie"
+                    rows={3}
+                    disabled={isSubmitting}
+                  />
+                </label>
+
+                <div className={styles.contextActions}>
+                  <button
+                    type="button"
+                    onClick={handleContextRecordToggle}
+                    className={`${styles.contextButton} ${
+                      isRecordingContext ? styles.contextButtonActive : ''
+                    }`}
+                    disabled={isSubmitting || isTranscribingContext}
+                  >
+                    {isRecordingContext
+                      ? 'Stop context recording'
+                      : 'Record context voice note'}
+                  </button>
+                  {isTranscribingContext && (
+                    <span className={styles.contextStatus}>Transcribing…</span>
+                  )}
+                </div>
+                {contextError && <p className={styles.contextError}>{contextError}</p>}
+              </div>
             </div>
-            <p className={styles.recordNote}>
-              Record audio directly from your microphone or upload an existing file below.
-              When you stop recording, the captured audio is attached automatically.
-            </p>
-            <div className={styles.recordActions}>
-              <button
-                type="button"
-                onClick={handleMeetingRecordToggle}
-                className={styles.recordButton}
-                disabled={isSubmitting || isProcessingRecording}
-              >
-                {isRecordingMeeting ? 'Stop recording' : 'Start recording'}
-              </button>
-              {hasRecordedMeeting && audioUrl && meetingRecordingFilename && (
-                <a
-                  href={audioUrl}
-                  download={meetingRecordingFilename}
-                  className={styles.recordDownload}
-                >
-                  Download recording
-                </a>
-              )}
-              {hasRecordedMeeting && (
-                <button
-                  type="button"
-                  onClick={handleDiscardRecording}
-                  className={styles.recordSecondary}
-                >
-                  Discard
-                </button>
-              )}
-            </div>
-            <div className={styles.recordFooter}>
-              <span className={styles.recordTimer}>
-                Duration: {formattedMeetingDuration}
-              </span>
-              {isProcessingRecording && (
-                <span className={styles.recordProcessing}>Processing…</span>
-              )}
-            </div>
-            {meetingRecordingError && (
-              <p className={styles.recordError}>{meetingRecordingError}</p>
-            )}
           </section>
 
-          <label className={styles.label}>
-            <span>Audio file (MP3, WAV, M4A...)</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              name="audio"
-              accept="audio/*"
-              onChange={(event) => {
-                const selected = event.target.files?.[0] ?? null;
-                setFile(selected);
-                setHasRecordedMeeting(false);
-                setMeetingRecordingFilename(selected ? selected.name : null);
-                setMeetingRecordingDuration(0);
-                setMeetingRecordingError(null);
-                if (!selected && fileInputRef.current) {
-                  fileInputRef.current.value = '';
-                }
-              }}
-              disabled={isSubmitting}
-              required
-            />
-          </label>
-
-          <label className={styles.label}>
-            <span>Meeting context (share agenda, goals, or attendees)</span>
-            <textarea
-              value={meetingContext}
-              onChange={(event) => setMeetingContext(event.target.value)}
-              placeholder="Planning discussion, budget review, participants: Alex, Jamie"
-              rows={3}
-              disabled={isSubmitting}
-            />
-          </label>
-
-          <div className={styles.contextActions}>
+          <div className={styles.topActions}>
             <button
               type="button"
-              onClick={handleContextRecordToggle}
-              className={styles.contextButton}
-              disabled={isSubmitting || isTranscribingContext}
+              className={`${styles.advancedToggle} ${
+                showAdvanced ? styles.advancedToggleActive : ''
+              }`}
+              onClick={() => setShowAdvanced((previous) => !previous)}
+              disabled={isSubmitting}
             >
-              {isRecordingContext ? 'Stop recording context' : 'Record meeting context'}
+              {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
             </button>
-            {isTranscribingContext && (
-              <span className={styles.contextStatus}>Transcribing…</span>
-            )}
+            <button type="submit" className={styles.submit} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing…' : 'Transcribe & summarise'}
+            </button>
           </div>
-          {contextError && <p className={styles.contextError}>{contextError}</p>}
-
-          <button
-            type="button"
-            className={styles.advancedToggle}
-            onClick={() => setShowAdvanced((previous) => !previous)}
-          >
-            {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
-          </button>
 
           {showAdvanced && (
             <div className={styles.advancedPanel}>
