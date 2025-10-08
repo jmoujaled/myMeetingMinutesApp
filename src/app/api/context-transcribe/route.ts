@@ -52,12 +52,28 @@ export async function POST(request: NextRequest) {
       'audio/aac',
       'audio/ogg',
     ]);
-    if (fileObj.type && !allowedTypes.has(fileObj.type)) {
+    const normalizedType = fileObj.type
+      ? fileObj.type.split(';', 1)[0]?.trim().toLowerCase()
+      : '';
+    if (normalizedType && !allowedTypes.has(normalizedType)) {
       return NextResponse.json(
         { error: `Unsupported audio type: ${fileObj.type}` },
         { status: 415 },
       );
     }
+
+    console.info(
+      'Context upload received',
+      JSON.stringify(
+        {
+          name: fileObj.name,
+          type: fileObj.type,
+          size: typeof fileObj.size === 'number' ? fileObj.size : undefined,
+        },
+        null,
+        2,
+      ),
+    );
 
     let transcription;
     try {

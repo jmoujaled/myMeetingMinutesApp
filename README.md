@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Speechmatics Meeting Minutes Studio
 
-## Getting Started
+A full-stack Next.js lab that uploads meeting recordings to Speechmatics for transcription, enriches the results with diarization, summaries, sentiment, and topics, and then asks OpenAI to draft action-oriented minutes. The UI also records meetings directly in the browser, captures organiser context, and keeps results tidy for later download.
 
-First, run the development server:
+## Highlights
+- **Browser recorder + uploads** – Capture a meeting or drop an existing file, then preview it in the app.
+- **Safari hardening** – Fallback conversions, MIME normalisation, and consistent naming so Apple browsers behave like Chrome.
+- **Speechmatics controls** – Pick diarization mode, tune speaker sensitivity, enable summaries, sentiment, topics, and translations.
+- **Insight dashboards** – Review diarised segments, Speechmatics summaries, sentiment totals, topic breakdowns, translations, and OpenAI minutes in one place.
+- **Exports** – Download TXT, SRT, JSON transcripts, and Markdown minutes with a single click.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Prerequisites
+- Node.js 18 or newer (Next.js App Router requires modern runtimes).
+- Speechmatics Batch transcription API access and key.
+- OpenAI API key with access to `gpt-5-mini-2025-08-07` (or adjust the model in `src/app/api/transcribe/route.ts`).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy `.env.local.example` (or create `.env.local`) and provide secrets:
+   ```dotenv
+   SPEECHMATICS_API_KEY=your-speechmatics-key
+   OPENAI_API_KEY=your-openai-key
+   ```
+3. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+4. Visit [http://localhost:3000/studio](http://localhost:3000/studio) to use the recording studio UI.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project structure
+- `src/app/api/transcribe/route.ts` – Orchestrates the batch transcription workflow, retries with progressively simpler configs, fetches Speechmatics exports, and calls OpenAI for meeting minutes.
+- `src/app/api/context-transcribe/route.ts` – Transcribes short organiser context clips through OpenAI Whisper / gpt-4o-mini-transcribe.
+- `src/app/studio/page.tsx` – Client-side studio, in-browser recording, diarised segment renderer, exports, and settings.
+- `src/utils/audio.ts` – Browser audio helpers (recorder capability detection, conversions).
+- `docs/` – High-level overviews, upgrade notes, and implementation timeline.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Browser & audio notes
+- The recorder negotiates supported MIME types at runtime (`MediaRecorder.isTypeSupported`). Safari captures `audio/mp4`, we transcode it to MP3 (128 kbps) before upload, and fall back to WAV only if encoding fails. Chrome keeps the more efficient WebM/Opus stream.
+- Speechmatics accepts MP3, MP4/AAC, WebM/Opus, and WAV, so transcripts stay consistent regardless of the originating browser.
 
-## Learn More
+## Useful scripts
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Next.js dev server with hot reload. |
+| `npm run build` | Production build. |
+| `npm run start` | Serve the production build. |
+| `npm run lint` | ESLint (recommended before committing). |
 
-To learn more about Next.js, take a look at the following resources:
+## Testing suggestions
+- Record short clips in Safari, Chrome, and Firefox to confirm MIME handling.
+- Exercise the advanced settings (diarization, summaries, sentiment, topics, translations) to ensure the server forwards everything correctly.
+- Inspect warnings surfaced by the API route; repeated fallbacks indicate Speechmatics rejected a config.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Future work
+1. Stream large recordings directly to object storage and hand Speechmatics a signed URL for multi-hour meetings.
+2. Cache/persist transcripts so a refresh doesn’t drop results.
+3. Surface per-segment sentiment/topics once Speechmatics exposes them.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Happy shipping!

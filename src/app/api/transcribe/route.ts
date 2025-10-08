@@ -57,6 +57,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info(
+      'Transcription upload received',
+      JSON.stringify(
+        {
+          name: file.name,
+          type: file.type,
+          size: typeof file.size === 'number' ? file.size : undefined,
+        },
+        null,
+        2,
+      ),
+    );
+
     const language = formData.get('language')?.toString() ?? 'en';
     const diarizationMode =
       (formData.get('diarizationMode')?.toString() as
@@ -262,6 +275,9 @@ ${meetingContext}
       warnings,
     });
   } catch (error) {
+    if (error instanceof SpeechmaticsResponseError) {
+      console.error('Speechmatics error response', error.response);
+    }
     console.error('Transcription request failed', error);
     return NextResponse.json(
       { error: 'Failed to process the transcription request.' },

@@ -15,6 +15,10 @@
   - Translations for any languages you asked for
 - **OpenAI minutes stay** – The AI-written meeting minutes are still there, just in their own card.
 
+## Recording quality-of-life
+- **Safari behaves now** – The recorder figures out which formats each browser can handle. Safari gets a friendly filename that matches Chrome (`meeting-2025-…`) instead of the unreadable `com.apple.WebKit.WebContent.xpc` placeholder.
+- **Uploads stay small** – Safari audio is transcoded to MP3 (about 6–10× smaller than WAV) before uploading to Speechmatics, with WAV as a quiet fallback. Chrome keeps its efficient WebM recording.
+
 ## Easy downloads
 - Want to save the transcript? Grab it as plain text, SRT subtitles, or raw JSON. You can also download the OpenAI minutes as a Markdown file.
 

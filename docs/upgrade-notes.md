@@ -14,6 +14,12 @@ This iteration extends the batch transcription workflow to surface more of Speec
 - **Feature toggles** – New controls for diarization mode, speaker sensitivity (enabled in speaker diarization), summarization style, sentiment, topic detection, and translation language list.
 - **Insight cards** – Panels for Speechmatics summary, sentiment counts, topic frequency histogram, and per-language translation lists.
 - **Asset downloads** – Inline buttons to export TXT, SRT, JSON transcripts, and the OpenAI-generated minutes.
+- **File picker polish** – Safari used to show `com.apple.WebKit.WebContent.xpc` when a recording finished. We now mirror Chrome’s behaviour with a custom picker label and timestamped filenames.
+
+## Browser compatibility & uploads
+- Normalise `MediaRecorder` MIME detection so Safari picks a supported codec (`audio/mp4`) and Chrome stays on Opus/WebM.
+- Transcode Safari captures to MP3 (128 kbps) before upload, falling back to WAV only if encoding fails. Chrome retains its smaller WebM recordings.
+- Expand API-side MIME validation to accept codec-qualified headers such as `audio/webm;codecs=opus`.
 
 ## UX considerations
 - Speaker sensitivity slider is automatically disabled unless diarization mode is set to `speaker`, because Speechmatics only uses the sensitivity tuning when clustering speakers in that mode.

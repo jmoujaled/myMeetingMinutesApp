@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import styles from './page.module.css';
+import { convertBlobToMp3, convertBlobToWav } from '@/utils/audio';
 
 import type { SpeakerSegment } from '@/types/transcription';
 import { formatTimestamp } from '@/utils/time';
@@ -313,8 +314,38 @@ export default function Studio() {
       setIsTranscribingContext(true);
       setContextError(null);
       try {
+        const support = contextMimeSupportRef.current;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const baseName = `context-${timestamp}`;
+        const normalizedType =
+          blob instanceof File && blob.type
+            ? blob.type.split(';', 1)[0]?.trim()?.toLowerCase() ?? ''
+            : '';
+        const fallbackMime = normalizedType || support?.mimeType?.split(';', 1)[0] || 'audio/webm';
+        const fallbackName = `${baseName}.${support?.extension ?? 'webm'}`;
+
+        let workingFile: File;
+        try {
+          workingFile = await convertBlobToWav(blob, `${baseName}.wav`);
+        } catch (wavError) {
+          console.warn('Context recording WAV conversion failed', wavError);
+          try {
+            const preferredName =
+              blob instanceof File && blob.name ? blob.name : fallbackName;
+            const preferredType =
+              blob instanceof File && blob.type ? blob.type : fallbackMime;
+            workingFile =
+              blob instanceof File
+                ? new File([blob], preferredName, { type: preferredType })
+                : new File([blob], fallbackName, { type: fallbackMime });
+          } catch (wrapError) {
+            console.warn('Context recording fallback file creation failed', wrapError);
+            workingFile = new File([blob], fallbackName, { type: fallbackMime });
+          }
+        }
+
         const formData = new FormData();
-        formData.append('audio', blob, 'context.webm');
+        formData.append('audio', workingFile, workingFile.name);
         const response = await fetch('/api/context-transcribe', {
           method: 'POST',
           body: formData,
@@ -360,6 +391,12 @@ ${newText}` : newText,
     [meetingRecordingDuration],
   );
 
+  const displayFileName = useMemo(() => {
+    if (meetingRecordingFilename) return meetingRecordingFilename;
+    if (file) return file.name;
+    return 'No file chosen';
+  }, [file, meetingRecordingFilename]);
+
   const handleMeetingRecordToggle = useCallback(async () => {
     if (isRecordingMeeting) {
       setIsProcessingRecording(true);
@@ -380,6 +417,7 @@ ${newText}` : newText,
       const support = meetingMimeSupportRef.current;
       if (!support) {
         setMeetingRecordingError('Recording is not supported in this browser.');
+        setIsProcessingRecording(false);
         return;
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -413,20 +451,55 @@ ${newText}` : newText,
           setIsProcessingRecording(false);
           return;
         }
-        const filename = `meeting-${new Date()
+        const baseName = `meeting-${new Date()
           .toISOString()
-          .replace(/[:.]/g, '-')}.${support.extension}`;
-        const recordedFile = new File([blob], filename, { type: blob.type });
-        setMeetingRecordingFilename(filename);
-        setHasRecordedMeeting(true);
-        setMeetingRecordingError(null);
-        setFile(recordedFile);
-        if (fileInputRef.current) {
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(recordedFile);
-          fileInputRef.current.files = dataTransfer.files;
-        }
-        setIsProcessingRecording(false);
+          .replace(/[:.]/g, '-')}`;
+
+        void (async () => {
+          try {
+            const fallbackMime = support.mimeType.split(';', 1)[0] ?? 'audio/webm';
+            const fallbackName = `${baseName}.${support.extension}`;
+
+            let finalFile: File;
+            try {
+              finalFile = await convertBlobToMp3(blob, `${baseName}.mp3`);
+            } catch (mp3Error) {
+              console.warn('Meeting recording MP3 conversion failed', mp3Error);
+              try {
+                if (blob instanceof File) {
+                  finalFile = new File([blob], blob.name || fallbackName, {
+                    type: blob.type || fallbackMime,
+                  });
+                } else {
+                  finalFile = new File([blob], fallbackName, { type: fallbackMime });
+                }
+              } catch (wrapError) {
+                console.warn('Meeting recording fallback file creation failed', wrapError);
+                try {
+                  finalFile = await convertBlobToWav(blob, `${baseName}.wav`);
+                } catch (wavError) {
+                  console.warn('Meeting recording WAV conversion failed, using original blob', wavError);
+                  finalFile = new File([blob], fallbackName, { type: fallbackMime });
+                }
+              }
+            }
+            setMeetingRecordingFilename(finalFile.name);
+            setHasRecordedMeeting(true);
+            setMeetingRecordingError(null);
+            setFile(finalFile);
+            if (fileInputRef.current && typeof DataTransfer !== 'undefined') {
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(finalFile);
+              fileInputRef.current.files = dataTransfer.files;
+            }
+          } catch (processingError) {
+            console.warn('Meeting recording processing failed', processingError);
+            setMeetingRecordingError('Unable to process recording. Please upload audio manually.');
+            setHasRecordedMeeting(false);
+          } finally {
+            setIsProcessingRecording(false);
+          }
+        })();
       };
 
       meetingRecorderRef.current = recorder;
@@ -572,12 +645,24 @@ ${newText}` : newText,
       return;
     }
 
-    const candidates: Array<{ mimeType: string; extension: string }> = [
-      { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
-      { mimeType: 'audio/webm', extension: 'webm' },
-      { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'm4a' },
-      { mimeType: 'audio/mp4', extension: 'm4a' },
-    ];
+    const isSafari =
+      typeof navigator !== 'undefined' &&
+      /safari/i.test(navigator.userAgent) &&
+      !/chrome|chromium|crios/i.test(navigator.userAgent);
+
+    const candidates: Array<{ mimeType: string; extension: string }> = isSafari
+      ? [
+          { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'm4a' },
+          { mimeType: 'audio/mp4', extension: 'm4a' },
+          { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
+          { mimeType: 'audio/webm', extension: 'webm' },
+        ]
+      : [
+          { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
+          { mimeType: 'audio/webm', extension: 'webm' },
+          { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'm4a' },
+          { mimeType: 'audio/mp4', extension: 'm4a' },
+        ];
 
     const pickSupport = () => {
       for (const option of candidates) {
@@ -846,25 +931,40 @@ ${newText}` : newText,
               <div className={styles.captureColumn}>
                 <label className={styles.label}>
                   <span>Upload audio (MP3, WAV, M4A...)</span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    name="audio"
-                    accept="audio/*"
-                    onChange={(event) => {
-                      const selected = event.target.files?.[0] ?? null;
-                      setFile(selected);
-                      setHasRecordedMeeting(false);
-                      setMeetingRecordingFilename(selected ? selected.name : null);
-                      setMeetingRecordingDuration(0);
-                      setMeetingRecordingError(null);
-                      if (!selected && fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-                    }}
-                    disabled={isSubmitting}
-                    required
-                  />
+                  <div className={styles.fileInputControl}>
+                    <button
+                      type="button"
+                      className={styles.filePickerButton}
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      Choose file
+                    </button>
+                    <span className={styles.fileName} aria-live="polite">
+                      {displayFileName}
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      name="audio"
+                      accept="audio/*"
+                      className={styles.fileInputHidden}
+                      onChange={(event) => {
+                        const selected = event.target.files?.[0] ?? null;
+                        setFile(selected);
+                        setHasRecordedMeeting(false);
+                        setMeetingRecordingFilename(selected ? selected.name : null);
+                        setMeetingRecordingDuration(0);
+                        setMeetingRecordingError(null);
+                        if (!selected && fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      required
+                      tabIndex={-1}
+                    />
+                  </div>
                 </label>
 
                 <label className={styles.label}>
@@ -916,9 +1016,6 @@ ${newText}` : newText,
               disabled={isSubmitting}
             >
               {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
-            </button>
-            <button type="submit" className={styles.submit} disabled={isSubmitting}>
-              {isSubmitting ? 'Processing…' : 'Transcribe & summarise'}
             </button>
           </div>
 
