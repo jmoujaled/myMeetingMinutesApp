@@ -20,10 +20,10 @@ This log captures the evolution of the meeting-minutes studio so we can pick the
 - Standardised recorded file names to `meeting-<timestamp>` / `context-<timestamp>` regardless of browser quirks.
 - Added a custom file picker display so Safari no longer surfaces `com.apple.WebKit.WebContent.xpc` as the chosen file name.
 
-## MP3 encoder rollout
-- Bundled `lamejs` and introduced `convertBlobToMp3`, cutting Safari upload sizes by ~6–10×.
-- Updated both context and meeting recording flows to try MP3 first, with WAV and original-blob fallbacks for resilience.
-- Refreshed documentation to reflect the new pipeline and removed "coming soon" notices.
+## Recording compatibility iteration
+- Experimented with MP3 encoding via `lamejs`, but ultimately reverted to uploading the native browser container (Safari MP4, Chrome WebM) to avoid bundler build issues.
+- Retained WAV conversion utilities as a safety net when the browser blob cannot be wrapped cleanly.
+- Updated documentation to reflect the final approach and call out remaining large-meeting considerations.
 
 ## Documentation refresh
 - Replaced the stock README with project-specific setup, architecture, and testing guidance.

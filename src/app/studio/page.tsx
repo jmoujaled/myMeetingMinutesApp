@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import styles from './page.module.css';
-import { convertBlobToMp3, convertBlobToWav } from '@/utils/audio';
+import { convertBlobToWav } from '@/utils/audio';
 
 import type { SpeakerSegment } from '@/types/transcription';
 import { formatTimestamp } from '@/utils/time';
@@ -462,25 +462,16 @@ ${newText}` : newText,
 
             let finalFile: File;
             try {
-              finalFile = await convertBlobToMp3(blob, `${baseName}.mp3`);
-            } catch (mp3Error) {
-              console.warn('Meeting recording MP3 conversion failed', mp3Error);
+              finalFile = new File([blob], `${baseName}.${support.extension}`, {
+                type: fallbackMime,
+              });
+            } catch (wrapError) {
+              console.warn('Meeting recording file wrap failed', wrapError);
               try {
-                if (blob instanceof File) {
-                  finalFile = new File([blob], blob.name || fallbackName, {
-                    type: blob.type || fallbackMime,
-                  });
-                } else {
-                  finalFile = new File([blob], fallbackName, { type: fallbackMime });
-                }
-              } catch (wrapError) {
-                console.warn('Meeting recording fallback file creation failed', wrapError);
-                try {
-                  finalFile = await convertBlobToWav(blob, `${baseName}.wav`);
-                } catch (wavError) {
-                  console.warn('Meeting recording WAV conversion failed, using original blob', wavError);
-                  finalFile = new File([blob], fallbackName, { type: fallbackMime });
-                }
+                finalFile = await convertBlobToWav(blob, `${baseName}.wav`);
+              } catch (wavError) {
+                console.warn('Meeting recording WAV conversion failed, using original blob', wavError);
+                finalFile = new File([blob], fallbackName, { type: fallbackMime });
               }
             }
             setMeetingRecordingFilename(finalFile.name);

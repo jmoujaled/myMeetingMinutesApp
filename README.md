@@ -38,8 +38,8 @@ A full-stack Next.js lab that uploads meeting recordings to Speechmatics for tra
 - `docs/` – High-level overviews, upgrade notes, and implementation timeline.
 
 ## Browser & audio notes
-- The recorder negotiates supported MIME types at runtime (`MediaRecorder.isTypeSupported`). Safari captures `audio/mp4`, we transcode it to MP3 (128 kbps) before upload, and fall back to WAV only if encoding fails. Chrome keeps the more efficient WebM/Opus stream.
-- Speechmatics accepts MP3, MP4/AAC, WebM/Opus, and WAV, so transcripts stay consistent regardless of the originating browser.
+- The recorder negotiates supported MIME types at runtime (`MediaRecorder.isTypeSupported`). Safari captures `audio/mp4` (`.m4a`) while Chrome records `audio/webm` with Opus. We upload the native container directly and fall back to WAV only if the browser cannot wrap the blob cleanly.
+- Speechmatics accepts MP4/AAC, WebM/Opus, and WAV, so transcripts stay consistent regardless of the originating browser.
 
 ## Useful scripts
 | Command | Description |

@@ -119,7 +119,7 @@ Because both batch and realtime APIs share the same config objects, you can mix 
 - **SRT/Text export**: request `format: 'srt'` or `'text'` in `getJobResult` for friendly export formats.
 - **Advanced diarization**: `speaker_change` mode is faster if you only need boundaries; full `speaker` mode performs clustering to label recurring voices.
 - **SDK metadata**: The SDK automatically adds `sm-sdk` query params so Speechmatics can attribute traffic—handy when debugging with support.
-- **Audio formats**: Speechmatics accepts MP3, MP4/AAC, WebM/Opus, and WAV. The studio keeps Chrome’s WebM uploads and now transcodes Safari captures to MP3 (128 kbps), falling back to WAV only if encoding fails.
+- **Audio formats**: Speechmatics accepts MP3, MP4/AAC, WebM/Opus, and WAV. The studio uploads the browser’s native container (WebM/Opus on Chromium, MP4/AAC on Safari) and only falls back to WAV when conversion fails.
 
 ## Brainstorming app ideas
 

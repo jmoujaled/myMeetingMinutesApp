@@ -18,7 +18,7 @@ This iteration extends the batch transcription workflow to surface more of Speec
 
 ## Browser compatibility & uploads
 - Normalise `MediaRecorder` MIME detection so Safari picks a supported codec (`audio/mp4`) and Chrome stays on Opus/WebM.
-- Transcode Safari captures to MP3 (128 kbps) before upload, falling back to WAV only if encoding fails. Chrome retains its smaller WebM recordings.
+- Upload the native recording container (MP4 on Safari, WebM on Chromium) and fall back to WAV only if the browser fails to package audio data.
 - Expand API-side MIME validation to accept codec-qualified headers such as `audio/webm;codecs=opus`.
 
 ## UX considerations
