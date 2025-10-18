@@ -17,6 +17,8 @@ process.env.UNDICI_BODY_TIMEOUT = '0';
 
 import { buildSpeakerSegments } from '@/lib/speechmatics';
 import { formatTimestamp } from '@/utils/time';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { usageService } from '@/lib/usage-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,7 +39,7 @@ const openai = openaiKey
   ? new OpenAI({ apiKey: openaiKey })
   : undefined;
 
-export async function POST(request: NextRequest) {
+async function handleTranscription(request: AuthenticatedRequest) {
   if (!speechmaticsKey || !openai) {
     return NextResponse.json(
       { error: 'Server is missing required credentials.' },
@@ -46,29 +48,81 @@ export async function POST(request: NextRequest) {
   }
 
   const speechmatics = new BatchTranscription(speechmaticsKey);
+  const user = request.user;
+  let derivedName = `upload-${Date.now()}`; // Default filename
 
   try {
     const formData = await request.formData();
-    const file = formData.get('audio');
-    if (!file || !(file instanceof File)) {
+    const audioBlob = formData.get('audio');
+    if (!audioBlob || !(audioBlob instanceof Blob)) {
       return NextResponse.json(
         { error: 'Upload an audio file under the "audio" field.' },
         { status: 400 },
       );
     }
 
+    // Check file size and duration limits before processing
+    const fileSizeMB = audioBlob.size / (1024 * 1024);
+    
+    // Pre-check usage limits with file size
+    const usageLimitCheck = await usageService.checkLimits(user.id, user.tier, { 
+      fileSizeMB 
+    });
+
+    if (!usageLimitCheck.canProceed) {
+      return NextResponse.json(
+        { 
+          error: usageLimitCheck.reason || 'Usage limit exceeded',
+          code: 'USAGE_LIMIT_EXCEEDED',
+          details: {
+            currentTier: user.tier,
+            usageStats: usageLimitCheck.usageStats,
+            upgradeUrl: '/upgrade'
+          }
+        },
+        { status: 429 }
+      );
+    }
+
+    const isFile = typeof File !== 'undefined' && audioBlob instanceof File;
+    derivedName =
+      (isFile && audioBlob.name) ||
+      formData.get('fileName')?.toString() ||
+      `upload-${Date.now()}`;
+    const inferredType = audioBlob.type || 'application/octet-stream';
+    const transcriptionInput: Parameters<BatchTranscription['transcribe']>[0] =
+      isFile
+        ? (audioBlob as File)
+        : { data: audioBlob, fileName: derivedName };
+
     console.info(
       'Transcription upload received',
       JSON.stringify(
         {
-          name: file.name,
-          type: file.type,
-          size: typeof file.size === 'number' ? file.size : undefined,
+          name: derivedName,
+          type: inferredType,
+          size:
+            typeof audioBlob.size === 'number' ? audioBlob.size : undefined,
+          usingNamedFile: isFile,
+          userId: user.id,
+          userTier: user.tier,
         },
         null,
         2,
       ),
     );
+
+    // Ensure user profile exists before recording usage
+    try {
+      await usageService.recordUsage(user.id, {
+        filename: derivedName,
+        fileSize: audioBlob.size,
+        usageCost: 1
+      });
+    } catch (recordError) {
+      console.error('Failed to record usage:', recordError);
+      // Continue without recording usage to prevent blocking the transcription
+    }
 
     const language = formData.get('language')?.toString() ?? 'en';
     const diarizationMode =
@@ -158,7 +212,7 @@ export async function POST(request: NextRequest) {
 
     try {
       transcript = await speechmatics.transcribe(
-        file,
+        transcriptionInput,
         jobConfig,
         'json-v2',
       );
@@ -169,7 +223,7 @@ export async function POST(request: NextRequest) {
         );
         try {
           transcript = await speechmatics.transcribe(
-            file,
+            transcriptionInput,
             { transcription_config: transcriptionConfig },
             'json-v2',
           );
@@ -180,7 +234,7 @@ export async function POST(request: NextRequest) {
             );
             const minimalConfig: BatchTranscriptionConfig = { language };
             transcript = await speechmatics.transcribe(
-              file,
+              transcriptionInput,
               { transcription_config: minimalConfig },
               'json-v2',
             );
@@ -213,35 +267,123 @@ ${meetingContext}
       : '';
 
     let minutes = '';
-    try {
-      const completion = await openai.responses.create({
-        model: 'gpt-5-mini-2025-08-07',
-        max_output_tokens: 900,
-        input: [
+    
+    // Helper function to attempt OpenAI minutes generation
+    const generateMinutes = async (attempt = 1, useBackupModel = false) => {
+      // Primary model: gpt-4o-mini, Backup model: gpt-3.5-turbo
+      const model = useBackupModel ? 'gpt-3.5-turbo' : 'gpt-4o-mini';
+      console.log(`🤖 Starting OpenAI minutes generation (attempt ${attempt}, model: ${model})...`);
+      console.log('📏 Prompt length:', `${contextForPrompt}${transcriptForPrompt}`.length, 'characters');
+      console.log('📊 Segments count:', segments.length);
+      
+      const completion = await openai.chat.completions.create({
+        model,
+        max_tokens: 900,
+        messages: [
           {
             role: 'system',
-            content: [
-              {
-                type: 'input_text',
-                text: 'You are an executive assistant who writes concise, action-oriented meeting minutes. Include decisions, open questions, and next steps when present.',
-              },
-            ],
+            content: 'You are an executive assistant who writes concise, action-oriented meeting minutes. Include decisions, open questions, and next steps when present.',
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${contextForPrompt}${transcriptForPrompt}`,
-              },
-            ],
+            content: `Create detailed meeting minutes based on the following diarized transcript. Preserve speaker attribution when relevant.\n\n${contextForPrompt}${transcriptForPrompt}`,
           },
         ],
       });
-      minutes = completion.output_text ?? '';
-    } catch (openAiError) {
-      console.error('Minutes generation failed', openAiError);
-      warnings.push('Minutes generation failed; minutes are unavailable.');
+      
+      const generatedMinutes = completion.choices[0]?.message?.content ?? '';
+      
+      console.log('✅ OpenAI call completed successfully');
+      console.log('📝 Generated minutes length:', generatedMinutes.length);
+      console.log('🔢 Tokens used:', completion.usage?.total_tokens || 'unknown');
+      console.log('🎯 Model used:', completion.model);
+      console.log('📋 Response details:', {
+        choices: completion.choices?.length || 0,
+        finishReason: completion.choices?.[0]?.finish_reason,
+        hasContent: !!completion.choices?.[0]?.message?.content
+      });
+      
+      // Additional validation
+      if (completion.choices?.length === 0) {
+        console.warn('⚠️  OpenAI returned no choices in response');
+      }
+      
+      if (completion.choices?.[0]?.finish_reason === 'length') {
+        console.warn('⚠️  OpenAI response was truncated due to max_tokens limit');
+      }
+      
+      return generatedMinutes;
+    };
+    
+    // Try OpenAI minutes generation with retry logic
+    try {
+      minutes = await generateMinutes(1);
+      
+      // If we get empty content, try once more with same model
+      if (minutes.length === 0) {
+        console.warn('⚠️  OpenAI returned empty content, retrying with same model...');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        minutes = await generateMinutes(2);
+        
+        // If still empty, try with backup model
+        if (minutes.length === 0) {
+          console.warn('⚠️  Still empty, trying with backup model (gpt-3.5-turbo)...');
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          minutes = await generateMinutes(3, true);
+          
+          if (minutes.length === 0) {
+            console.warn('⚠️  OpenAI returned empty content with both models, generating fallback summary');
+            
+            // Generate a basic fallback summary
+            const speakerCount = new Set(segments.map(s => s.speakerLabel)).size;
+            const duration = Math.round((transcript.job?.duration || 0) / 60);
+            const wordCount = segments.reduce((count, s) => count + (s.text?.split(' ').length || 0), 0);
+            
+            minutes = `**Meeting Summary**
+
+**Duration:** ${duration} minutes
+**Participants:** ${speakerCount} speakers
+**Word Count:** ~${wordCount} words
+
+**Note:** This is an automated fallback summary. The AI-generated meeting minutes could not be created due to a temporary service issue.
+
+**Key Points:**
+- Meeting recorded with ${segments.length} conversation segments
+- Multiple speakers participated in the discussion
+- Full transcript is available for detailed review
+
+**Recommendation:** Please review the full transcript for complete meeting details.`;
+
+            warnings.push('AI minutes generation failed; basic summary provided instead.');
+          }
+        }
+      }
+      
+    } catch (openAiError: unknown) {
+      console.error('❌ Minutes generation failed:', openAiError);
+      const error = openAiError as { message?: string; response?: { status?: number; statusText?: string; data?: unknown } };
+      console.error('Error details:', {
+        message: error?.message,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data
+      });
+      
+      // Try one more time if it's a network/timeout error
+      const errorObj = openAiError as { code?: string; response?: { status?: number } };
+      if (errorObj?.code === 'ECONNRESET' || errorObj?.code === 'ETIMEDOUT' || 
+          (errorObj?.response?.status && errorObj.response.status >= 500)) {
+        try {
+          console.log('🔄 Retrying OpenAI call due to network/server error...');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          minutes = await generateMinutes(4);
+        } catch (retryError) {
+          console.error('❌ Retry also failed:', retryError);
+          warnings.push('Minutes generation failed after retry; minutes are unavailable.');
+        }
+      } else {
+        warnings.push('Minutes generation failed; minutes are unavailable.');
+      }
     }
 
     const jobId = transcript.job?.id;
@@ -261,6 +403,74 @@ ${meetingContext}
       }
     }
 
+    // Fallback: If transcriptText is not available, build it from segments
+    if (!transcriptText && segments && segments.length > 0) {
+      transcriptText = segments.map(segment => 
+        `${segment.speakerLabel}: ${segment.text}`
+      ).join('\n');
+      console.log('📝 Built transcript from segments as fallback');
+    }
+
+    // Check if user has exceeded limits after transcription is complete
+    const durationSeconds = transcript.job?.duration;
+    console.log(`🕒 Transcription completed - Duration: ${durationSeconds ? Math.round(durationSeconds / 60) : 'unknown'} minutes`);
+    
+    let limitExceededWarning = null;
+    if (durationSeconds) {
+      const durationMinutes = durationSeconds / 60;
+      
+      // Get updated usage stats after this transcription
+      const updatedUsageStats = await usageService.getCurrentUsage(user.id);
+      const tierLimits = await usageService.getTierLimits(user.tier);
+      
+      if (updatedUsageStats && tierLimits) {
+        const totalDurationAfterThisJob = updatedUsageStats.currentMonth.totalDurationMinutes + durationMinutes;
+        const transcriptionsAfterThisJob = updatedUsageStats.currentMonth.transcriptionsUsed + 1;
+        
+        // Check if this transcription pushed them over any limits
+        if (tierLimits.max_duration_minutes !== -1 && totalDurationAfterThisJob > tierLimits.max_duration_minutes) {
+          limitExceededWarning = {
+            type: 'duration_exceeded',
+            message: `This transcription pushed you over your monthly ${tierLimits.max_duration_minutes} minute limit. Future transcriptions will be blocked until next month.`,
+            upgradeUrl: '/upgrade'
+          };
+        } else if (tierLimits.monthly_transcription_limit !== -1 && transcriptionsAfterThisJob >= tierLimits.monthly_transcription_limit) {
+          limitExceededWarning = {
+            type: 'transcription_limit_reached',
+            message: `You have reached your monthly limit of ${tierLimits.monthly_transcription_limit} transcriptions. Future transcriptions will be blocked until next month.`,
+            upgradeUrl: '/upgrade'
+          };
+        }
+      }
+    }
+
+    // Mark job as completed successfully and update with duration and transcript data
+    console.log('🔍 Debug - Transcript data being saved:');
+    console.log('- transcriptText length:', transcriptText?.length || 0);
+    console.log('- minutes length:', minutes?.length || 0);
+    console.log('- segments count:', segments?.length || 0);
+    console.log('- jobId:', jobId);
+    
+    try {
+      await usageService.updateJobStatus(
+        user.id, 
+        derivedName, 
+        'completed', 
+        jobId,
+        undefined, // no error message
+        durationSeconds, // add the duration
+        {
+          transcript_text: transcriptText,
+          summary: minutes,
+          segments: segments,
+          job_data: transcript.job
+        }
+      );
+      console.log('✅ Successfully saved transcript data to database');
+    } catch (updateError) {
+      console.error('❌ Failed to update job status (completed):', updateError);
+    }
+
     return NextResponse.json({
       segments,
       minutes,
@@ -273,8 +483,22 @@ ${meetingContext}
       transcriptSrt,
       transcriptJson: transcript,
       warnings,
+      limitExceeded: limitExceededWarning, // Include limit warning if present
     });
   } catch (error) {
+    // Mark job as failed
+    try {
+      await usageService.updateJobStatus(
+        user.id, 
+        derivedName, 
+        'failed', 
+        undefined, 
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+    }
+
     if (error instanceof SpeechmaticsResponseError) {
       console.error('Speechmatics error response', error.response);
     }
@@ -335,3 +559,9 @@ function buildPromptTranscript(
           return undefined;
       }
     };
+
+// Export the authenticated POST handler
+export const POST = withAuth(handleTranscription, {
+  requireAuth: true,
+  checkUsageLimits: false // Allow users to transcribe until they exceed limits
+});

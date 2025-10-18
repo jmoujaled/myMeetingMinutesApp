@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { usageService } from '@/lib/usage-service';
 
 const openaiKey = process.env.OPENAI_API_KEY;
 
@@ -13,13 +15,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
+async function handleContextTranscription(request: AuthenticatedRequest) {
   if (!openai) {
     return NextResponse.json(
       { error: 'Server is missing required credentials.' },
       { status: 500 },
     );
   }
+
+  const user = request.user;
 
   try {
     const formData = await request.formData();
@@ -69,6 +73,8 @@ export async function POST(request: NextRequest) {
           name: fileObj.name,
           type: fileObj.type,
           size: typeof fileObj.size === 'number' ? fileObj.size : undefined,
+          userId: user.id,
+          userTier: user.tier,
         },
         null,
         2,
@@ -108,3 +114,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Export the authenticated POST handler
+export const POST = withAuth(handleContextTranscription, {
+  requireAuth: true,
+  requiredTier: 'free' // Context transcription available to all tiers
+});

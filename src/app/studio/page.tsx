@@ -11,6 +11,7 @@ import {
 
 import styles from './page.module.css';
 import { convertBlobToWav } from '@/utils/audio';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 import type { SpeakerSegment } from '@/types/transcription';
 import { formatTimestamp } from '@/utils/time';
@@ -44,6 +45,11 @@ type TranscriptionResponse =
       transcriptSrt?: string;
       transcriptJson?: RetrieveTranscriptResponse;
       warnings?: string[];
+      limitExceeded?: {
+        type: 'duration_exceeded' | 'transcription_limit_reached';
+        message: string;
+        upgradeUrl: string;
+      };
       error?: undefined;
     }
   | { error: string };
@@ -842,9 +848,10 @@ ${newText}` : newText,
   };
 
   return (
-    <main className={styles.main}>
+    <ProtectedRoute>
+      <main className={styles.main}>
       <section className={styles.panel}>
-        <h1 className={styles.heading}>My Meeting Minute app</h1>
+        <h1 className={styles.heading}>My Meeting Minutes App</h1>
         <p className={styles.subtitle}>
           Upload an audio file, configure diarization and enrichment options, and
           generate insights and meeting minutes.
@@ -1448,5 +1455,6 @@ ${newText}` : newText,
         </section>
       )}
     </main>
+    </ProtectedRoute>
   );
 }

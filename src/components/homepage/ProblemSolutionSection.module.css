@@ -1,0 +1,247 @@
+.section {
+  padding: 6rem 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.problemSection {
+  margin-bottom: 6rem;
+}
+
+.solutionSection {
+  margin-bottom: 4rem;
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  text-align: center;
+  color: #6b7280;
+  margin: 0 0 3rem 0;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Problem Cards */
+.problemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.problemCard {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.problemCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+}
+
+.problemIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.problemTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin: 0 0 1rem 0;
+}
+
+.problemText {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Solution Cards */
+.solutionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.solutionCard {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #10b981;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.solutionCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+}
+
+.solutionIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.solutionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #059669;
+  margin: 0 0 1rem 0;
+}
+
+.solutionText {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.solutionText strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Benefits Highlight */
+.benefitsHighlight {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-radius: 1.5rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: #ffffff;
+}
+
+.benefitsTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 2rem 0;
+  color: #ffffff;
+}
+
+.benefitsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+}
+
+.benefitItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.benefitMetric {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.benefitDescription {
+  font-size: 0.875rem;
+  color: #e5e7eb;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .section {
+    padding: 4rem 1rem;
+  }
+  
+  .problemSection {
+    margin-bottom: 4rem;
+  }
+  
+  .problemGrid,
+  .solutionGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .problemCard,
+  .solutionCard {
+    padding: 1.5rem;
+  }
+  
+  .benefitsHighlight {
+    padding: 2rem 1.5rem;
+  }
+  
+  .benefitsList {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .section {
+    padding: 5rem 2rem;
+  }
+  
+  .problemGrid,
+  .solutionGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .section {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  }
+  
+  .sectionTitle {
+    color: #f9fafb;
+  }
+  
+  .sectionSubtitle {
+    color: #d1d5db;
+  }
+  
+  .problemCard,
+  .solutionCard {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .problemTitle {
+    color: #f87171;
+  }
+  
+  .solutionTitle {
+    color: #34d399;
+  }
+  
+  .problemText,
+  .solutionText {
+    color: #d1d5db;
+  }
+  
+  .solutionText strong {
+    color: #f3f4f6;
+  }
+}
