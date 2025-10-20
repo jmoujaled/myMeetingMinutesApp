@@ -186,8 +186,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const response = await supabase.auth.signOut()
             
             // Redirect to external login with auto-redirect back to homepage
-            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL || 'http://localhost:3030'
-            window.location.replace(`${externalLoginUrl}/login?message=signed_out&redirect_to=${encodeURIComponent(window.location.origin)}`)
+            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL
+            if (externalLoginUrl) {
+                window.location.replace(`${externalLoginUrl}/login?message=signed_out&redirect_to=${encodeURIComponent(window.location.origin)}`)
+            } else {
+                // For production without external login, just redirect to home
+                window.location.replace('/')
+            }
             
             return response
         } catch (error) {
@@ -200,8 +205,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             broadcastLogout()
             
             // Force redirect even on error
-            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL || 'http://localhost:3030'
-            window.location.replace(`${externalLoginUrl}/login?error=signout_failed&redirect_to=${encodeURIComponent(window.location.origin)}`)
+            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL
+            if (externalLoginUrl) {
+                window.location.replace(`${externalLoginUrl}/login?error=signout_failed&redirect_to=${encodeURIComponent(window.location.origin)}`)
+            } else {
+                // For production without external login, just redirect to home
+                window.location.replace('/')
+            }
             
             return { error: error as any }
         }
