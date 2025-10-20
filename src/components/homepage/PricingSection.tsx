@@ -234,30 +234,7 @@ export default function PricingSection({ isAuthenticated = false }: PricingSecti
           ))}
         </div>
 
-        <div className={styles.faq}>
-          <h3 className={styles.faqHeading}>Frequently Asked Questions</h3>
-          <div className={styles.faqGrid}>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Can I upgrade when Pro becomes available?</h4>
-              <p className={styles.faqAnswer}>
-                Yes! Once Pro launches, you&apos;ll be able to upgrade seamlessly from your free account with all your data intact.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>What happens to my data if I cancel?</h4>
-              <p className={styles.faqAnswer}>
-                You can export all your transcripts before canceling. We&apos;ll keep your data for 30 days after cancellation, then permanently delete it.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Do you offer refunds?</h4>
-              <p className={styles.faqAnswer}>
-                Yes, we offer a 30-day money-back guarantee on all paid plans. No questions asked.
-              </p>
-            </div>
 
-          </div>
-        </div>
 
         <div className={styles.ctaSection}>
           <h3 className={styles.ctaHeading}>Ready to Transform Your Meeting Productivity?</h3>

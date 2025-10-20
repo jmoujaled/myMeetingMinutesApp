@@ -65,7 +65,7 @@ function UpgradeContent() {
     },
     pro: {
       name: 'Pro',
-      price: '$19/month',
+      price: '$10/month',
       monthlyLimit: 100,
       maxFileSize: '100MB',
       maxDuration: '120 minutes',
@@ -81,31 +81,32 @@ function UpgradeContent() {
       ],
       limitations: []
     },
-    admin: {
-      name: 'Admin',
-      price: 'Contact us',
+    enterprise: {
+      name: 'Enterprise',
+      price: 'Custom pricing',
       monthlyLimit: -1,
       maxFileSize: 'Unlimited',
       maxDuration: 'Unlimited',
       features: [
-        'Unlimited transcriptions',
-        'Unlimited file size',
-        'Unlimited duration',
-        'All Pro features',
-        'Admin dashboard',
-        'User management',
-        'System monitoring',
-        'Priority support'
+        'Everything in Pro',
+        'User management & admin dashboard',
+        'Team collaboration features',
+        'Custom integrations',
+        'SSO (Single Sign-On)',
+        'Advanced security controls',
+        'Dedicated account manager',
+        'SLA guarantees',
+        'Custom deployment options'
       ],
       limitations: []
     }
   }
 
-  const handleTierChange = async (newTier: 'free' | 'pro' | 'admin') => {
+  const handleTierChange = async (newTier: 'free' | 'pro' | 'enterprise') => {
     if (!user || !userProfile) return
 
-    // Only admins can change tiers for now (simulating admin interface)
-    if (userProfile.tier !== 'admin') {
+    // Only enterprise users can change tiers for now (simulating admin interface)
+    if (userProfile.tier !== 'enterprise') {
       setMessage({
         type: 'error',
         text: 'Tier changes are currently managed by administrators. Please contact support.'
@@ -379,7 +380,7 @@ function UpgradeContent() {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => handleTierChange(tier as 'pro' | 'admin')}
+                      onClick={() => handleTierChange(tier as 'pro' | 'enterprise')}
                       disabled={loading}
                       className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
                     >
@@ -393,11 +394,11 @@ function UpgradeContent() {
         </div>
 
         {/* Admin Interface */}
-        {userProfile?.tier === 'admin' && (
+        {userProfile?.tier === 'enterprise' && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Admin Controls</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Enterprise Controls</h2>
             <p className="text-sm text-gray-600 mb-4">
-              As an admin, you can change tier levels. In a production environment, this would be integrated with a payment system.
+              As an enterprise user, you can change tier levels. In a production environment, this would be integrated with a payment system.
             </p>
             <div className="flex space-x-4">
               <button
@@ -415,11 +416,11 @@ function UpgradeContent() {
                 Set to Pro
               </button>
               <button
-                onClick={() => handleTierChange('admin')}
-                disabled={loading || currentTier === 'admin'}
+                onClick={() => handleTierChange('enterprise')}
+                disabled={loading || currentTier === 'enterprise'}
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
               >
-                Set to Admin
+                Set to Enterprise
               </button>
             </div>
           </div>

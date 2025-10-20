@@ -29,11 +29,7 @@ const securityFeatures: SecurityFeatureProps[] = [
     title: 'Reliable Uptime',
     description: '99.9% uptime with redundant systems and automatic failover to ensure your transcriptions are always available.'
   },
-  {
-    icon: '📱',
-    title: 'GDPR Compliant',
-    description: 'Full compliance with GDPR, CCPA, and other privacy regulations. Request data deletion anytime.'
-  },
+
   {
     icon: '💾',
     title: 'Data Portability',

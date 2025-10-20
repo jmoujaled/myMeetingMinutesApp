@@ -323,45 +323,7 @@
   transform: translateY(-1px);
 }
 
-.faq {
-  margin-bottom: 60px;
-}
 
-.faqHeading {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.faqGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 32px;
-}
-
-.faqItem {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-}
-
-.faqQuestion {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-.faqAnswer {
-  font-size: 1rem;
-  color: #64748b;
-  line-height: 1.6;
-  margin: 0;
-}
 
 .ctaSection {
   text-align: center;
@@ -457,10 +419,7 @@
     font-size: 2.5rem;
   }
 
-  .faqGrid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
+
 
   .ctaSection {
     padding: 32px 24px;
