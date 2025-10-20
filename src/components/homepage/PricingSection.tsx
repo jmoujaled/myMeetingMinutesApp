@@ -265,7 +265,7 @@ export default function PricingSection({ isAuthenticated = false }: PricingSecti
             Join thousands of professionals who save hours every week with automated transcription and AI summaries.
           </p>
           <div className={styles.ctaButtons}>
-            <Link href="http://localhost:3030/register" className={styles.primaryCta}>
+            <Link href="/register" className={styles.primaryCta}>
               Start Free
             </Link>
           </div>

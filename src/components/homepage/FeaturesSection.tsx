@@ -118,7 +118,7 @@ export default function FeaturesSection({ isAuthenticated = false }: FeaturesSec
           <p className={styles.ctaText}>
             Ready to transform your meeting productivity?
           </p>
-          <a href="http://localhost:3030/register" className={styles.ctaButton}>
+          <a href="/register" className={styles.ctaButton}>
             Start Free
           </a>
           <p className={styles.ctaSubtext}>

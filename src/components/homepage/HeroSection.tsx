@@ -44,7 +44,7 @@ export default function HeroSection({ isAuthenticated = false }: HeroSectionProp
         
         <div className={styles.ctaContainer} role="group" aria-label="Call to action buttons">
           <Link 
-            href="http://localhost:3030/register" 
+            href="/register" 
             className={styles.primaryCta}
             aria-describedby="primary-cta-description"
           >

@@ -186,7 +186,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const response = await supabase.auth.signOut()
             
             // Redirect to external login with auto-redirect back to homepage
-            window.location.replace('http://localhost:3030/login?message=signed_out&redirect_to=' + encodeURIComponent(window.location.origin))
+            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL || 'http://localhost:3030'
+            window.location.replace(`${externalLoginUrl}/login?message=signed_out&redirect_to=${encodeURIComponent(window.location.origin)}`)
             
             return response
         } catch (error) {
@@ -199,7 +200,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             broadcastLogout()
             
             // Force redirect even on error
-            window.location.replace('http://localhost:3030/login?error=signout_failed&redirect_to=' + encodeURIComponent(window.location.origin))
+            const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL || 'http://localhost:3030'
+            window.location.replace(`${externalLoginUrl}/login?error=signout_failed&redirect_to=${encodeURIComponent(window.location.origin)}`)
             
             return { error: error as any }
         }
