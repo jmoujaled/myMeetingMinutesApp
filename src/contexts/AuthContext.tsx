@@ -185,13 +185,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Sign out from Supabase
             const response = await supabase.auth.signOut()
             
+            // Safari-specific cleanup - clear all storage
+            if (typeof window !== 'undefined') {
+                try {
+                    // Clear localStorage
+                    localStorage.clear()
+                    // Clear sessionStorage
+                    sessionStorage.clear()
+                    // Clear cookies by setting them to expire
+                    document.cookie.split(";").forEach(function(c) { 
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                    });
+                } catch (e) {
+                    console.warn('Error clearing storage:', e)
+                }
+            }
+            
             // Redirect to external login with auto-redirect back to homepage
             const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL
             if (externalLoginUrl) {
                 window.location.replace(`${externalLoginUrl}/login?message=signed_out&redirect_to=${encodeURIComponent(window.location.origin)}`)
             } else {
                 // For production without external login, force a full page reload to homepage
-                window.location.href = '/'
+                // Use setTimeout to ensure storage clearing completes first
+                setTimeout(() => {
+                    window.location.href = '/'
+                }, 100)
             }
             
             return response
@@ -204,13 +223,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             clearAuthState()
             broadcastLogout()
             
+            // Safari-specific cleanup even on error
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.clear()
+                    sessionStorage.clear()
+                    document.cookie.split(";").forEach(function(c) { 
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                    });
+                } catch (e) {
+                    console.warn('Error clearing storage on error:', e)
+                }
+            }
+            
             // Force redirect even on error
             const externalLoginUrl = process.env.NEXT_PUBLIC_EXTERNAL_LOGIN_URL
             if (externalLoginUrl) {
                 window.location.replace(`${externalLoginUrl}/login?error=signout_failed&redirect_to=${encodeURIComponent(window.location.origin)}`)
             } else {
                 // For production without external login, force a full page reload to homepage
-                window.location.href = '/'
+                setTimeout(() => {
+                    window.location.href = '/'
+                }, 100)
             }
             
             return { error: error as any }

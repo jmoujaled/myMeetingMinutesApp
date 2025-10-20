@@ -94,7 +94,22 @@ export function clearAuthState(): void {
       localStorage.removeItem(key)
     })
     
+    // Clear all localStorage keys that might contain auth data
+    const allKeys = Object.keys(localStorage)
+    allKeys.forEach(key => {
+      if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
+        localStorage.removeItem(key)
+      }
+    })
+    
     sessionStorage.clear()
+    
+    // Safari-specific: Force clear by iterating through all sessionStorage keys
+    const sessionKeys = Object.keys(sessionStorage)
+    sessionKeys.forEach(key => {
+      sessionStorage.removeItem(key)
+    })
+    
   } catch (error) {
     console.error('Error clearing auth state:', error)
   }
