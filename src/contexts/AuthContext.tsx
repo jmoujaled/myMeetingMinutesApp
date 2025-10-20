@@ -190,8 +190,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (externalLoginUrl) {
                 window.location.replace(`${externalLoginUrl}/login?message=signed_out&redirect_to=${encodeURIComponent(window.location.origin)}`)
             } else {
-                // For production without external login, just redirect to home
-                window.location.replace('/')
+                // For production without external login, force a full page reload to homepage
+                window.location.href = '/'
             }
             
             return response
@@ -209,8 +209,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (externalLoginUrl) {
                 window.location.replace(`${externalLoginUrl}/login?error=signout_failed&redirect_to=${encodeURIComponent(window.location.origin)}`)
             } else {
-                // For production without external login, just redirect to home
-                window.location.replace('/')
+                // For production without external login, force a full page reload to homepage
+                window.location.href = '/'
             }
             
             return { error: error as any }
