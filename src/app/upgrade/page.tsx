@@ -81,7 +81,7 @@ function UpgradeContent() {
       ],
       limitations: []
     },
-    enterprise: {
+    admin: {
       name: 'Enterprise',
       price: 'Custom pricing',
       monthlyLimit: -1,
@@ -102,11 +102,11 @@ function UpgradeContent() {
     }
   }
 
-  const handleTierChange = async (newTier: 'free' | 'pro' | 'enterprise') => {
+  const handleTierChange = async (newTier: 'free' | 'pro' | 'admin') => {
     if (!user || !userProfile) return
 
-    // Only enterprise users can change tiers for now (simulating admin interface)
-    if (userProfile.tier !== 'enterprise') {
+    // Only admin users can change tiers for now (simulating admin interface)
+    if (userProfile.tier !== 'admin') {
       setMessage({
         type: 'error',
         text: 'Tier changes are currently managed by administrators. Please contact support.'
@@ -380,7 +380,7 @@ function UpgradeContent() {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => handleTierChange(tier as 'pro' | 'enterprise')}
+                      onClick={() => handleTierChange(tier as 'pro' | 'admin')}
                       disabled={loading}
                       className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
                     >
@@ -394,11 +394,11 @@ function UpgradeContent() {
         </div>
 
         {/* Admin Interface */}
-        {userProfile?.tier === 'enterprise' && (
+        {userProfile?.tier === 'admin' && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Enterprise Controls</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Admin Controls</h2>
             <p className="text-sm text-gray-600 mb-4">
-              As an enterprise user, you can change tier levels. In a production environment, this would be integrated with a payment system.
+              As an admin user, you can change tier levels. In a production environment, this would be integrated with a payment system.
             </p>
             <div className="flex space-x-4">
               <button
@@ -416,11 +416,11 @@ function UpgradeContent() {
                 Set to Pro
               </button>
               <button
-                onClick={() => handleTierChange('enterprise')}
-                disabled={loading || currentTier === 'enterprise'}
+                onClick={() => handleTierChange('admin')}
+                disabled={loading || currentTier === 'admin'}
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
               >
-                Set to Enterprise
+                Set to Admin
               </button>
             </div>
           </div>
