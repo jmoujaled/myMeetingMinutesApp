@@ -22,7 +22,7 @@ import { usageService } from '@/lib/usage-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 60; // Reduced timeout for faster response
 
 const speechmaticsKey = process.env.SPEECHMATICS_API_KEY;
 const openaiKey = process.env.OPENAI_API_KEY;
@@ -208,6 +208,8 @@ async function handleTranscription(request: AuthenticatedRequest) {
 
     const warnings: string[] = [];
 
+    // For now, let's keep the original synchronous approach but with reduced timeout
+    // This is a temporary fix until we can implement proper async processing
     let transcript: Awaited<ReturnType<typeof speechmatics.transcribe>>;
 
     try {
