@@ -91,6 +91,24 @@ async function handleTranscription(request: AuthenticatedRequest) {
     // Check file size and duration limits before processing
     const fileSizeMB = audioBlob.size / (1024 * 1024);
     
+    // Netlify function payload limit check (temporary until async implementation)
+    const MAX_FILE_SIZE_MB = 5; // Conservative limit for Netlify functions
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      console.warn(`⚠️  TRANSCRIBE: File too large for synchronous processing: ${fileSizeMB.toFixed(2)}MB`);
+      return NextResponse.json(
+        { 
+          error: `File size (${fileSizeMB.toFixed(1)}MB) exceeds the current limit of ${MAX_FILE_SIZE_MB}MB for direct transcription.`,
+          code: 'FILE_TOO_LARGE',
+          details: {
+            fileSizeMB: fileSizeMB,
+            maxSizeMB: MAX_FILE_SIZE_MB,
+            suggestion: 'Please try a shorter recording or compress your audio file. We are working on supporting larger files.'
+          }
+        },
+        { status: 413 } // Payload Too Large
+      );
+    }
+    
     // Pre-check usage limits with file size
     const usageLimitCheck = await usageService.checkLimits(user.id, user.tier, { 
       fileSizeMB 
