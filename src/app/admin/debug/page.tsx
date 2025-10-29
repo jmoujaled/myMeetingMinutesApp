@@ -165,6 +165,13 @@ export default function AdminDebugPage() {
           >
             📊 Usage Debug
           </a>
+          <a 
+            href="/api/debug/transcribe-form-test" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            🧪 Transcribe Form Test
+          </a>
         </div>
       </div>
 

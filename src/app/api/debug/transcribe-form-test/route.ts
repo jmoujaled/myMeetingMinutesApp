@@ -58,25 +58,21 @@ async function handleTranscribeFormTest(request: AuthenticatedRequest) {
       };
     }
 
-    // Test 4: Try to create a test transcription job record
+    // Test 4: Try to record usage (test database operations)
     try {
-      const jobId = `test-${Date.now()}`;
-      await usageService.recordTranscriptionStart(user.id, jobId, {
+      await usageService.recordUsage(user.id, {
         filename: 'test.mp3',
         fileSize: 1024 * 1024, // 1MB
         usageCost: 1
       });
       
-      results.tests.recordTranscriptionStart = {
+      results.tests.recordUsage = {
         status: 'completed',
-        jobId: jobId
+        message: 'Successfully recorded test usage'
       };
-
-      // Clean up - mark as failed to remove from active jobs
-      await usageService.updateJobStatus(user.id, 'failed', jobId, 'Test job - cleaning up');
       
     } catch (error) {
-      results.tests.recordTranscriptionStart = {
+      results.tests.recordUsage = {
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
