@@ -19,6 +19,12 @@ export default function ApiDebug() {
       endpoint: '/api/debug/transcribe-form-test'
     },
     {
+      id: 'usage-service-test',
+      name: 'Usage Service Test',
+      description: 'Tests usage service methods and database operations',
+      endpoint: '/api/debug/usage-service-test'
+    },
+    {
       id: 'auth-test',
       name: 'Authentication Test',
       description: 'Tests user authentication and profile retrieval',
