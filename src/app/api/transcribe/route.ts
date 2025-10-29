@@ -14,6 +14,7 @@ import {
 
 process.env.UNDICI_HEADERS_TIMEOUT = '300000';
 process.env.UNDICI_BODY_TIMEOUT = '0';
+process.env.UNDICI_CONNECT_TIMEOUT = '30000'; // 30 second connect timeout
 
 import { buildSpeakerSegments } from '@/lib/speechmatics';
 import { formatTimestamp } from '@/utils/time';
@@ -248,44 +249,87 @@ async function handleTranscription(request: AuthenticatedRequest) {
     // This is a temporary fix until we can implement proper async processing
     let transcript: Awaited<ReturnType<typeof speechmatics.transcribe>>;
 
-    try {
-      transcript = await speechmatics.transcribe(
-        transcriptionInput,
-        jobConfig,
-        'json-v2',
-      );
-    } catch (error) {
-      if (error instanceof SpeechmaticsResponseError) {
-        warnings.push(
-          'Transcription request was rejected. Trying a simpler configuration.',
+    // Helper function to check if error is a network timeout
+    const isNetworkTimeout = (err: unknown): boolean => {
+      if (err instanceof Error) {
+        const errorStr = err.message + (err.cause ? JSON.stringify(err.cause) : '');
+        return errorStr.includes('CONNECT_TIMEOUT') || 
+               errorStr.includes('UND_ERR_CONNECT_TIMEOUT') ||
+               errorStr.includes('Network error');
+      }
+      return false;
+    };
+
+    // Retry logic for network timeouts
+    const maxRetries = 2;
+    let lastError: unknown;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`🔄 TRANSCRIBE: Retry attempt ${attempt}/${maxRetries} after network timeout`);
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        }
+        
+        transcript = await speechmatics.transcribe(
+          transcriptionInput,
+          jobConfig,
+          'json-v2',
         );
-        try {
-          transcript = await speechmatics.transcribe(
-            transcriptionInput,
-            { transcription_config: transcriptionConfig },
-            'json-v2',
+        
+        // Success! Break out of retry loop
+        break;
+      } catch (error) {
+        lastError = error;
+        
+        // Check if it's a network timeout that we should retry
+        if (isNetworkTimeout(error) && attempt < maxRetries) {
+          console.warn(`⚠️  TRANSCRIBE: Network timeout on attempt ${attempt}, will retry...`);
+          continue; // Try again
+        }
+        
+        // Not a timeout or out of retries - try fallback configurations
+        if (error instanceof SpeechmaticsResponseError) {
+          warnings.push(
+            'Transcription request was rejected. Trying a simpler configuration.',
           );
-        } catch (innerError) {
-          if (innerError instanceof SpeechmaticsResponseError) {
-            warnings.push(
-              'Transcription with diarization was rejected. Falling back to minimal transcription (no diarization or extras).',
-            );
-            const minimalConfig: BatchTranscriptionConfig = { language };
+          try {
             transcript = await speechmatics.transcribe(
               transcriptionInput,
-              { transcription_config: minimalConfig },
+              { transcription_config: transcriptionConfig },
               'json-v2',
             );
-          } else {
-            throw innerError;
+            break; // Success with simpler config
+          } catch (innerError) {
+            if (innerError instanceof SpeechmaticsResponseError) {
+              warnings.push(
+                'Transcription with diarization was rejected. Falling back to minimal transcription (no diarization or extras).',
+              );
+              const minimalConfig: BatchTranscriptionConfig = { language };
+              transcript = await speechmatics.transcribe(
+                transcriptionInput,
+                { transcription_config: minimalConfig },
+                'json-v2',
+              );
+              break; // Success with minimal config
+            } else {
+              throw innerError;
+            }
           }
+        } else if (error instanceof Error) {
+          console.error('Transcription service failed', error);
+          throw error;
+        } else {
+          throw error;
         }
-      } else if (error instanceof Error) {
-        console.error('Transcription service failed', error);
-        throw error;
-      } else {
-        throw error;
       }
+    }
+    
+    // If we exhausted all retries, throw the last error
+    if (!transcript!) {
+      console.error(`❌ TRANSCRIBE: Failed after ${maxRetries} attempts`);
+      throw lastError;
     }
 
     if (typeof transcript === 'string') {
