@@ -114,14 +114,24 @@ async function handleTranscription(request: AuthenticatedRequest) {
 
     // Ensure user profile exists before recording usage
     try {
+      console.log('🔧 TRANSCRIBE: Attempting to record usage for user:', user.id);
       await usageService.recordUsage(user.id, {
         filename: derivedName,
         fileSize: audioBlob.size,
         usageCost: 1
       });
+      console.log('✅ TRANSCRIBE: Successfully recorded usage');
     } catch (recordError) {
-      console.error('Failed to record usage:', recordError);
+      console.error('❌ TRANSCRIBE: Failed to record usage:', recordError);
+      console.error('❌ TRANSCRIBE: Error details:', {
+        message: recordError instanceof Error ? recordError.message : 'Unknown error',
+        stack: recordError instanceof Error ? recordError.stack : undefined,
+        userId: user.id,
+        filename: derivedName,
+        fileSize: audioBlob.size
+      });
       // Continue without recording usage to prevent blocking the transcription
+      // This is a non-critical failure - the transcription should still proceed
     }
 
     const language = formData.get('language')?.toString() ?? 'en';
