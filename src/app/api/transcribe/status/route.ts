@@ -39,7 +39,7 @@ async function handleStatusCheck(request: AuthenticatedRequest) {
     }
 
     // Check job status from Speechmatics
-    const jobStatus = await speechmatics.getJob(jobId);
+    const jobStatus = await speechmatics.getJob(jobId) as any;
     
     if (jobStatus.job_status === 'running' || jobStatus.job_status === 'accepted') {
       return NextResponse.json({

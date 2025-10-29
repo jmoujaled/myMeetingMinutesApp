@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Import server client with fallback
-let createClient: any
-try {
-  createClient = require('@/lib/supabase/server').createClient
-} catch (error) {
-  console.warn('Could not import server client, auth verification disabled')
-  createClient = null
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const imageUrl = searchParams.get('url')
@@ -24,10 +15,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Verify user authentication if userId is provided and server client is available
-    if (userId && createClient) {
+    // Verify user authentication if userId is provided
+    if (userId) {
       try {
-        const supabase = createClient()
+        const { createClient } = await import('@/lib/supabase/server')
+        const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
         // Only serve image if the requesting user matches the userId parameter
