@@ -66,18 +66,20 @@ async function handleTranscription(request: AuthenticatedRequest) {
       mimeType: audioBlob instanceof Blob ? audioBlob.type : 'N/A'
     });
     
-    if (!audioBlob || !(audioBlob instanceof Blob)) {
+    const isValidBlob = audioBlob instanceof Blob;
+    
+    if (!audioBlob || !isValidBlob) {
       console.error('❌ TRANSCRIBE: Invalid audio blob', {
         received: audioBlob,
         type: typeof audioBlob,
-        isBlob: !!(audioBlob && audioBlob instanceof Blob)
+        isBlob: isValidBlob
       });
       return NextResponse.json(
         { 
           error: 'Upload an audio file under the "audio" field.',
           debug: {
             received: typeof audioBlob,
-            isBlob: !!(audioBlob && audioBlob instanceof Blob),
+            isBlob: isValidBlob,
             formDataKeys: Array.from(formData.keys())
           }
         },
