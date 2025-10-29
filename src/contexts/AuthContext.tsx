@@ -71,7 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 if (mounted) {
                     if (session?.user) {
-                        console.log('Session found:', session.user.email)
+                        // Session found
                         setUser(session.user)
                         
                         // Load profile, but don't block on it
