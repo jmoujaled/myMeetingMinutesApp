@@ -54,9 +54,33 @@ async function handleTranscription(request: AuthenticatedRequest) {
   try {
     const formData = await request.formData();
     const audioBlob = formData.get('audio');
+    
+    console.log('🔍 TRANSCRIBE: Received form data');
+    console.log('🔍 TRANSCRIBE: Audio blob type:', typeof audioBlob);
+    console.log('🔍 TRANSCRIBE: Audio blob instanceof Blob:', audioBlob instanceof Blob);
+    console.log('🔍 TRANSCRIBE: Audio blob instanceof File:', typeof File !== 'undefined' && audioBlob instanceof File);
+    console.log('🔍 TRANSCRIBE: Audio blob details:', {
+      hasBlob: !!audioBlob,
+      type: audioBlob?.constructor?.name,
+      size: audioBlob instanceof Blob ? audioBlob.size : 'N/A',
+      mimeType: audioBlob instanceof Blob ? audioBlob.type : 'N/A'
+    });
+    
     if (!audioBlob || !(audioBlob instanceof Blob)) {
+      console.error('❌ TRANSCRIBE: Invalid audio blob', {
+        received: audioBlob,
+        type: typeof audioBlob,
+        isBlob: !!(audioBlob && audioBlob instanceof Blob)
+      });
       return NextResponse.json(
-        { error: 'Upload an audio file under the "audio" field.' },
+        { 
+          error: 'Upload an audio file under the "audio" field.',
+          debug: {
+            received: typeof audioBlob,
+            isBlob: !!(audioBlob && audioBlob instanceof Blob),
+            formDataKeys: Array.from(formData.keys())
+          }
+        },
         { status: 400 },
       );
     }

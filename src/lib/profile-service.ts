@@ -25,7 +25,7 @@ export class ProfileService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          console.log('Profile not found for user:', userId)
+          // Profile not found - this is expected for new users
           return null
         }
         console.error('Error fetching profile:', error)
@@ -44,7 +44,7 @@ export class ProfileService {
    */
   static async createProfile(user: any): Promise<UserProfile | null> {
     try {
-      console.log('Creating profile for user:', user.id, user.email)
+      // Creating profile for user
       
       // Use service client to bypass RLS
       const serviceSupabase = createServiceClient()
@@ -81,7 +81,7 @@ export class ProfileService {
       if (error) {
         // Handle duplicate key error
         if (error.code === '23505') {
-          console.log('Profile already exists, fetching existing profile')
+          // Profile already exists, fetch it
           return await this.getProfile(user.id)
         }
         
@@ -89,7 +89,7 @@ export class ProfileService {
         return null
       }
 
-      console.log('Profile created successfully:', (data as any)?.id)
+      // Profile created successfully
       return data as any
     } catch (error) {
       console.error('Profile creation error:', error)
