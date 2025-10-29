@@ -119,6 +119,57 @@ export default function AdminDebugPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Debug Results</h1>
       
+      {/* API Debug Endpoints */}
+      <div className="bg-blue-50 rounded-lg p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-3 text-blue-800">API Debug Endpoints</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <a 
+            href="/api/debug/env-check" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            🔧 Environment Check
+          </a>
+          <a 
+            href="/api/debug/test-basic" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            ⚡ Basic API Test
+          </a>
+          <a 
+            href="/api/debug/auth-test" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            🔐 Auth Middleware Test
+          </a>
+          <a 
+            href="/api/debug/transcribe-detailed" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            🎤 Transcribe Components Test
+          </a>
+          <a 
+            href="/api/debug/transcribe-minimal" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            🧪 Minimal Transcribe Test
+          </a>
+          <a 
+            href="/api/debug/usage" 
+            target="_blank"
+            className="bg-white border border-blue-200 rounded px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+          >
+            📊 Usage Debug
+          </a>
+        </div>
+      </div>
+
+      {/* Database Debug Results */}
+      <h2 className="text-lg font-semibold mb-3">Database Debug Results</h2>
       <div className="space-y-4">
         {Object.entries(results).map(([key, value]) => (
           <div key={key} className="bg-white rounded-lg shadow p-4">
