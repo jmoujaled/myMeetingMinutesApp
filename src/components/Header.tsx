@@ -42,6 +42,7 @@ export default function Header() {
     
     // Debug logging
     console.log('Avatar debug:', {
+      userId: user?.id,
       picture: user?.user_metadata?.picture,
       avatar_url: user?.user_metadata?.avatar_url,
       profile_avatar: userProfile?.avatar_url,
@@ -50,9 +51,9 @@ export default function Header() {
     })
     
     if (avatarUrl) {
-      // Use proxy for Google images to avoid CORS issues
+      // Use proxy for Google images to avoid CORS issues and add user ID for proper caching
       const proxyUrl = avatarUrl.startsWith('https://lh3.googleusercontent.com/') 
-        ? `/api/proxy-avatar?url=${encodeURIComponent(avatarUrl)}`
+        ? `/api/proxy-avatar?url=${encodeURIComponent(avatarUrl)}&userId=${user?.id || ''}`
         : avatarUrl
 
       return (
