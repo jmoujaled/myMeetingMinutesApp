@@ -42,7 +42,7 @@ export default function DebugUserData() {
             <h2 className="text-lg font-semibold mb-2">Avatar Image Test</h2>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
-              src={`/api/proxy-avatar?url=${encodeURIComponent(user.user_metadata.picture)}`}
+              src={`/api/proxy-avatar?url=${encodeURIComponent(user.user_metadata.picture)}&userId=${user.id}`}
               alt="Avatar test"
               className="w-16 h-16 rounded-full border"
               onLoad={() => {
