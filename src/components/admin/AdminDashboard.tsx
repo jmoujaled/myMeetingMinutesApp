@@ -4,10 +4,11 @@ import { useState } from 'react'
 import AdminSidebar from './AdminSidebar'
 import SystemOverview from './SystemOverview'
 import UserManagement from './UserManagement'
+import ApiDebug from './ApiDebug'
 import { SystemInitializer } from './SystemInitializer'
 import RefreshSession from './RefreshSession'
 
-type AdminView = 'overview' | 'users' | 'analytics' | 'settings'
+type AdminView = 'overview' | 'users' | 'analytics' | 'settings' | 'api-debug'
 
 export default function AdminDashboard() {
   const [activeView, setActiveView] = useState<AdminView>('overview')
@@ -27,6 +28,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         )
+      case 'api-debug':
+        return <ApiDebug />
       case 'settings':
         return (
           <div className="p-6">
